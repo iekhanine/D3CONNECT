@@ -275,41 +275,45 @@ export default function App() {
           ) : (
             <SectionViews view={activeView} />
           )}
-
-          <section className="newsletter">
-            <div>
-              <span className="eyebrow light">STAY IN THE LOOP</span>
-              <h2>{polity.districtShortName} updates without the scavenger hunt.</h2>
-              <p>
-                Get neighborhood problems, proposed solutions, and community decisions
-                in one concise digest.
-              </p>
-            </div>
-
-            {subscribed ? (
-              <div className="subscription-success">✓ You're on the list.</div>
-            ) : (
-              <form onSubmit={handleSubscribe}>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  placeholder="Enter your email"
-                  required
-                />
-                <button>Subscribe</button>
-              </form>
-            )}
-          </section>
-
-          <footer className="site-footer">
-            <span>
-              {polity.productName} is an independent community participation prototype
-              and is not owned or operated by the City of Portland.
-            </span>
-            <span>Built by OneTime Labs · 2026</span>
-          </footer>
         </main>
+
+        <div className="footer-dock">
+          <div className="footer-dock-inner">
+            <section className="newsletter">
+              <div>
+                <span className="eyebrow light">STAY IN THE LOOP</span>
+                <h2>{polity.districtShortName} updates without the scavenger hunt.</h2>
+                <p>
+                  Get neighborhood problems, proposed solutions, and community decisions
+                  in one concise digest.
+                </p>
+              </div>
+
+              {subscribed ? (
+                <div className="subscription-success">✓ You're on the list.</div>
+              ) : (
+                <form onSubmit={handleSubscribe}>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    placeholder="Enter your email"
+                    required
+                  />
+                  <button>Subscribe</button>
+                </form>
+              )}
+            </section>
+
+            <footer className="site-footer">
+              <span>
+                {polity.productName} is an independent community participation prototype
+                and is not owned or operated by the City of Portland.
+              </span>
+              <span>Built by OneTime Labs · 2026</span>
+            </footer>
+          </div>
+        </div>
       </div>
     </div>
   );
