@@ -11,7 +11,6 @@ interface Props {
   businesses: Business[];
   neighborhoods: Neighborhood[];
   selectedNeighborhood: string;
-  onOpenIssue: () => void;
 }
 
 export default function SectionViews(props: Props) {
@@ -21,7 +20,6 @@ export default function SectionViews(props: Props) {
     case "calendar": return <CalendarView {...props} />;
     case "businesses": return <BusinessesView {...props} />;
     case "feedback": return <FeedbackView {...props} />;
-    case "issue": return <IssueView {...props} />;
     case "about": return <AboutView />;
     default: return null;
   }
@@ -60,6 +58,5 @@ function FeedbackView({ neighborhoods, selectedNeighborhood }: Props) {
   return <div className="page-view"><PageTitle eyebrow="CIVIC FEEDBACK" title="Tell District 3 what matters" text="Share ideas, concerns, or suggestions. This prototype is designed to turn qualitative resident feedback into useful neighborhood-level insights."/><div className="form-panel">{sent?<div className="success-state"><div className="success-check">✓</div><h3>Feedback received.</h3><p>Thank you for contributing to the District 3 community picture.</p></div>:<form className="form-grid" onSubmit={handleSubmit}><label className="full">Neighborhood<select required value={neighborhood} onChange={(e)=>setNeighborhood(e.target.value)}><option value="">Choose neighborhood</option>{neighborhoods.map(n=><option key={n.id}>{n.name}</option>)}</select></label><label className="full">What should District 3 know?<textarea rows={7} required value={message} onChange={(e)=>setMessage(e.target.value)} placeholder="What is working, what is not, and what should get more attention?"/></label><label className="full">Email (optional)<input type="email" value={email} onChange={(e)=>setEmail(e.target.value)} placeholder="you@example.com"/></label><div className="form-actions full"><button className="primary-button">Submit Feedback</button></div></form>}</div></div>;
 }
 
-function IssueView({ onOpenIssue }: Props) { return <div className="page-view"><PageTitle eyebrow="ISSUE NAVIGATOR" title="Start with the problem, not the bureaucracy" text="D3 Connect is designed to help residents identify the correct reporting path without first having to know Portland's organizational chart."/><div className="feature-hero"><div><h2>Tell us what happened.</h2><p>Choose an issue, add the location and neighborhood, and the production version can route you to the right City workflow while preserving a District 3 service-demand record.</p><button className="primary-button" onClick={onOpenIssue}>Open Issue Navigator</button></div></div></div> }
-
 function AboutView(){return <div className="page-view"><PageTitle eyebrow="ABOUT THE PROJECT" title="D3 Connect: a district-scale PosProx prototype" text="D3 Connect combines practical community information with a prototype governance model built around Issues, collaborative Proposals, continuously supported Bills, and topic-scoped proxy delegation."/><div className="about-grid"><article className="data-card"><h3>The premise</h3><p>Every citizen begins responsible for everything, but no citizen can reasonably handle everything. People keep direct responsibility where they have interest, competence, energy, and resources, then proxy the rest.</p></article><article className="data-card"><h3>The civic workflow</h3><p>Anyone can raise an Issue. Proposals may address one or more Issues and evolve through revision and forks. A ready version becomes a locked Bill to which citizen support can be attached or removed.</p></article><article className="data-card"><h3>Built to redeploy</h3><p>District 3 is the first polity configuration, not a hard-coded product boundary. The same application and schema can host another district by adding a polity, district data, topics, and a deployment slug.</p></article></div></div>}
+

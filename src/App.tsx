@@ -181,16 +181,15 @@ export default function App() {
               onNavigate={navigate}
             />
           ) : (
-            <SectionViews
-              view={activeView}
-              projects={projects}
-              resources={resources}
-              events={events}
-              businesses={filteredBusinesses}
-              neighborhoods={neighborhoods}
-              selectedNeighborhood={selectedNeighborhood}
-              onOpenIssue={() => navigate("civic-issues")}
-            />
+<SectionViews
+  view={activeView}
+  projects={projects}
+  resources={resources}
+  events={events}
+  businesses={filteredBusinesses}
+  neighborhoods={neighborhoods}
+  selectedNeighborhood={selectedNeighborhood}
+/>
           )}
 
           <section className="newsletter">
@@ -207,3 +206,4 @@ export default function App() {
     </div>
   );
 }
+
