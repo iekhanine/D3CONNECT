@@ -1,8 +1,10 @@
 import {
   Check,
+  ChevronDown,
   ChevronRight,
   GitBranch,
   GitFork,
+  MapPin,
   Network,
   Plus,
   Search,
@@ -12,12 +14,13 @@ import {
   Vote,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { percent, polity } from "../config/polity";
 import type {
   Bill,
   Citizen,
   CivicIssue,
+  Neighborhood,
   Proposal,
   ProxyAssignment,
   ProxyDisposition,
@@ -28,13 +31,14 @@ import type {
 interface Props {
   view: ViewKey;
   topics: Topic[];
+  neighborhoods: Neighborhood[];
   citizens: Citizen[];
   civicIssues: CivicIssue[];
   proposals: Proposal[];
   bills: Bill[];
   proxyAssignments: ProxyAssignment[];
   currentCitizenId: string;
-  onCreateIssue: (input: { title: string; summary: string; topic_id: string; neighborhood?: string | null }) => Promise<void>;
+  onCreateIssue: (input: { title: string; summary: string; topic_id: string; neighborhood?: string | null; location_detail?: string | null }) => Promise<void>;
   onCreateProposal: (input: { title: string; summary: string; body: string; issue_ids: string[] }) => Promise<void>;
   onToggleBillSupport: (billId: string, support: boolean) => Promise<void>;
   onSaveProxy: (topicId: string, proxyId: string, disposition: ProxyDisposition) => Promise<void>;
@@ -62,13 +66,137 @@ function PageTitle({ eyebrow, title, text, action }: { eyebrow: string; title: s
   );
 }
 
-function IssuesView({ civicIssues, topics, citizens, onCreateIssue }: Props) {
+function NeighborhoodScopePicker({
+  neighborhoods,
+  value,
+  onChange,
+}: {
+  neighborhoods: Neighborhood[];
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const rootRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  const filteredNeighborhoods = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    if (!normalized) return neighborhoods;
+    return neighborhoods.filter((neighborhood) =>
+      neighborhood.name.toLowerCase().includes(normalized),
+    );
+  }, [neighborhoods, query]);
+
+  useEffect(() => {
+    function handlePointerDown(event: PointerEvent) {
+      if (rootRef.current && !rootRef.current.contains(event.target as Node)) {
+        setOpen(false);
+        setQuery("");
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setOpen(false);
+        setQuery("");
+      }
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (open) {
+      window.requestAnimationFrame(() => searchRef.current?.focus());
+    }
+  }, [open]);
+
+  function choose(nextValue: string) {
+    onChange(nextValue);
+    setOpen(false);
+    setQuery("");
+  }
+
+  return (
+    <div className={`issue-neighborhood-picker${open ? " open" : ""}`} ref={rootRef}>
+      <span className="issue-field-label">Neighborhood</span>
+
+      <button
+        type="button"
+        className="issue-neighborhood-trigger"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+      >
+        <span className="issue-neighborhood-trigger-icon"><MapPin size={17}/></span>
+        <span>{value || "District-Wide"}</span>
+        <ChevronDown size={17} className="issue-neighborhood-chevron"/>
+      </button>
+
+      {open && (
+        <div className="issue-neighborhood-menu" role="listbox" aria-label="Choose neighborhood">
+          <div className="issue-neighborhood-search">
+            <Search size={16}/>
+            <input
+              ref={searchRef}
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search neighborhoods"
+              aria-label="Search neighborhoods"
+            />
+          </div>
+
+          <button
+            type="button"
+            role="option"
+            aria-selected={value === "District-Wide"}
+            className={`issue-neighborhood-option district-wide${value === "District-Wide" ? " selected" : ""}`}
+            onClick={() => choose("District-Wide")}
+          >
+            <span><strong>District-Wide</strong><small>Applies across District 3</small></span>
+            {value === "District-Wide" && <Check size={17}/>} 
+          </button>
+
+          <div className="issue-neighborhood-divider" />
+
+          {filteredNeighborhoods.length ? (
+            filteredNeighborhoods.map((neighborhood) => (
+              <button
+                type="button"
+                role="option"
+                aria-selected={value === neighborhood.name}
+                key={neighborhood.id}
+                className={`issue-neighborhood-option${value === neighborhood.name ? " selected" : ""}`}
+                onClick={() => choose(neighborhood.name)}
+              >
+                <span>{neighborhood.name}</span>
+                {value === neighborhood.name && <Check size={17}/>} 
+              </button>
+            ))
+          ) : (
+            <div className="issue-neighborhood-empty">No neighborhoods match “{query}”.</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function IssuesView({ civicIssues, topics, neighborhoods, citizens, onCreateIssue }: Props) {
   const [query, setQuery] = useState("");
   const [creating, setCreating] = useState(false);
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
   const [topicId, setTopicId] = useState(topics[0]?.id ?? "");
-  const [neighborhood, setNeighborhood] = useState("");
+  const [neighborhood, setNeighborhood] = useState("District-Wide");
+  const [locationDetail, setLocationDetail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
 
@@ -96,10 +224,17 @@ function IssuesView({ civicIssues, topics, citizens, onCreateIssue }: Props) {
     setSubmitError("");
 
     try {
-      await onCreateIssue({ title, summary, topic_id: topicId, neighborhood: neighborhood || null });
+      await onCreateIssue({
+        title,
+        summary,
+        topic_id: topicId,
+        neighborhood: neighborhood || "District-Wide",
+        location_detail: locationDetail.trim() || null,
+      });
       setTitle("");
       setSummary("");
-      setNeighborhood("");
+      setNeighborhood("District-Wide");
+      setLocationDetail("");
       setQuery("");
       setCreating(false);
     } catch (error) {
@@ -124,7 +259,8 @@ function IssuesView({ civicIssues, topics, citizens, onCreateIssue }: Props) {
           <div className="form-grid">
             <label className="full">What should we call this?<input value={title} onChange={(e) => setTitle(e.target.value)} required placeholder="Example: Unsafe crossing at SE 82nd and Division"/></label>
             <label>What is this about?<select value={topicId} onChange={(e) => setTopicId(e.target.value)} required disabled={!topics.length}>{!topics.length && <option value="">Loading topics…</option>}{topics.map((topic) => <option key={topic.id} value={topic.id}>{topic.name}</option>)}</select></label>
-            <label>Where is this happening?<input value={neighborhood} onChange={(e) => setNeighborhood(e.target.value)} placeholder="Neighborhood or District-wide"/></label>
+            <NeighborhoodScopePicker neighborhoods={neighborhoods} value={neighborhood} onChange={setNeighborhood}/>
+            <label className="full">Street / cross street <span className="optional-label">Optional</span><textarea className="location-detail-input" rows={2} value={locationDetail} onChange={(e) => setLocationDetail(e.target.value)} placeholder="Example: SE 82nd Ave & Division St"/></label>
             <label className="full">Tell us what is going on<textarea rows={5} value={summary} onChange={(e) => setSummary(e.target.value)} required placeholder="Describe what you are seeing, why it matters, and who it affects. Plain language is fine."/></label>
             {submitError && <div className="full form-error" role="alert">{submitError}</div>}
             <div className="form-actions full"><button type="button" className="secondary-button" onClick={() => setCreating(false)} disabled={submitting}>Cancel</button><button className="primary-button" disabled={submitting || !topicId}>{submitting ? "Posting…" : "Post Issue"}</button></div>
@@ -139,7 +275,7 @@ function IssuesView({ civicIssues, topics, citizens, onCreateIssue }: Props) {
           <article className="governance-card" key={issue.id}>
             <div className="governance-card-meta"><span className="topic-pill">{topicName(issue.topic_id)}</span><span className={`issue-status issue-${issue.status.toLowerCase().replaceAll(" ", "-")}`}>{issue.status}</span></div>
             <h3>{issue.title}</h3><p>{issue.summary}</p>
-            <div className="governance-card-footer"><span>Shared by {citizenName(issue.created_by)}</span><span>{issue.neighborhood || "District-wide"}</span><strong>{issue.proposal_count} solution idea{issue.proposal_count === 1 ? "" : "s"}</strong></div>
+            <div className="governance-card-footer"><span>Shared by {citizenName(issue.created_by)}</span><span>{issue.neighborhood || "District-Wide"}{issue.location_detail ? ` · ${issue.location_detail}` : ""}</span><strong>{issue.proposal_count} solution idea{issue.proposal_count === 1 ? "" : "s"}</strong></div>
           </article>
         ))}
       </div>

@@ -121,6 +121,7 @@ export interface CivicIssue {
   summary: string;
   topic_id: string;
   neighborhood?: string | null;
+  location_detail?: string | null;
   status: CivicIssueStatus;
   created_at: string;
   proposal_count: number;

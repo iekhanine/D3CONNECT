@@ -27,11 +27,40 @@ import type {
 } from "./types";
 import "./App.css";
 
+const VIEW_ROUTES: Partial<Record<ViewKey, string>> = {
+  home: "",
+  about: "how-it-works",
+  "civic-issues": "problems",
+  proposals: "solutions",
+  bills: "decisions",
+  proxy: "people-i-trust",
+  delegation: "where-my-voice-goes",
+};
+
+const ROUTE_VIEWS = Object.entries(VIEW_ROUTES).reduce<Record<string, ViewKey>>(
+  (routes, [view, route]) => {
+    routes[route] = view as ViewKey;
+    return routes;
+  },
+  {},
+);
+
+function viewFromLocation(): ViewKey {
+  const route = window.location.hash.replace(/^#/, "").trim().toLowerCase();
+  return ROUTE_VIEWS[route] ?? "home";
+}
+
+function urlForView(view: ViewKey) {
+  const route = VIEW_ROUTES[view];
+  const base = `${window.location.pathname}${window.location.search}`;
+  return route ? `${base}#${route}` : base;
+}
+
 export default function App() {
   // ========================================================
   // APP 001 — Navigation / deployment state
   // ========================================================
-  const [activeView, setActiveView] = useState<ViewKey>("home");
+  const [activeView, setActiveView] = useState<ViewKey>(() => viewFromLocation());
   const [selectedNeighborhood, setSelectedNeighborhood] = useState("All");
 
   // ========================================================
@@ -79,6 +108,21 @@ export default function App() {
     );
   }, []);
 
+  useEffect(() => {
+    function handleHistoryNavigation() {
+      setActiveView(viewFromLocation());
+      window.scrollTo({ top: 0, behavior: "auto" });
+    }
+
+    window.addEventListener("popstate", handleHistoryNavigation);
+    window.addEventListener("hashchange", handleHistoryNavigation);
+
+    return () => {
+      window.removeEventListener("popstate", handleHistoryNavigation);
+      window.removeEventListener("hashchange", handleHistoryNavigation);
+    };
+  }, []);
+
   const currentCitizen = useMemo(
     () => citizens.find((citizen) => citizen.id === currentCitizenId),
     [citizens, currentCitizenId],
@@ -100,6 +144,13 @@ export default function App() {
   }
 
   function navigate(view: ViewKey) {
+    const nextUrl = urlForView(view);
+    const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+
+    if (currentUrl !== nextUrl) {
+      window.history.pushState({ view }, "", nextUrl);
+    }
+
     setActiveView(view);
     window.scrollTo({ top: 0, behavior: "smooth" });
 
@@ -119,6 +170,7 @@ export default function App() {
     summary: string;
     topic_id: string;
     neighborhood?: string | null;
+    location_detail?: string | null;
   }) {
     const created = await createCivicIssue({
       ...input,
@@ -259,6 +311,7 @@ export default function App() {
             <GovernanceViews
               view={activeView}
               topics={topics}
+              neighborhoods={neighborhoods}
               citizens={citizens}
               civicIssues={civicIssues}
               proposals={proposals}
