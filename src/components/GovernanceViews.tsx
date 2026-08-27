@@ -12,7 +12,7 @@ import {
   Vote,
   X,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { percent, polity } from "../config/polity";
 import type {
   Bill,
@@ -69,6 +69,17 @@ function IssuesView({ civicIssues, topics, citizens, onCreateIssue }: Props) {
   const [summary, setSummary] = useState("");
   const [topicId, setTopicId] = useState(topics[0]?.id ?? "");
   const [neighborhood, setNeighborhood] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+
+  // Topics are loaded asynchronously. The original prototype initialized
+  // topicId while the list was still empty, leaving the controlled select
+  // with an empty value even though the browser appeared to show a topic.
+  useEffect(() => {
+    if (!topicId && topics.length > 0) {
+      setTopicId(topics[0].id);
+    }
+  }, [topicId, topics]);
 
   const visible = useMemo(() => civicIssues.filter((issue) => `${issue.title} ${issue.summary}`.toLowerCase().includes(query.toLowerCase())), [civicIssues, query]);
   const topicName = (id: string) => topics.find((topic) => topic.id === id)?.name ?? "General";
@@ -76,8 +87,26 @@ function IssuesView({ civicIssues, topics, citizens, onCreateIssue }: Props) {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    await onCreateIssue({ title, summary, topic_id: topicId, neighborhood: neighborhood || null });
-    setTitle(""); setSummary(""); setNeighborhood(""); setCreating(false);
+    if (!topicId) {
+      setSubmitError("Please choose what this issue is about.");
+      return;
+    }
+
+    setSubmitting(true);
+    setSubmitError("");
+
+    try {
+      await onCreateIssue({ title, summary, topic_id: topicId, neighborhood: neighborhood || null });
+      setTitle("");
+      setSummary("");
+      setNeighborhood("");
+      setQuery("");
+      setCreating(false);
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "The issue could not be saved. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -86,7 +115,7 @@ function IssuesView({ civicIssues, topics, citizens, onCreateIssue }: Props) {
         eyebrow="START HERE · PROBLEMS & IDEAS"
         title="What needs attention in your neighborhood?"
         text="Report a problem, concern, or improvement you want to see. You do not need to know which City office handles it, and you do not need to have the solution yet."
-        action={<button className="primary-button" onClick={() => setCreating(true)}><Plus size={16}/> Share an Issue</button>}
+        action={<button className="primary-button" onClick={() => { setSubmitError(""); setCreating(true); }}><Plus size={16}/> Share an Issue</button>}
       />
 
       {creating && (
@@ -94,10 +123,11 @@ function IssuesView({ civicIssues, topics, citizens, onCreateIssue }: Props) {
           <div className="form-heading"><div><span className="eyebrow">SHARE AN ISSUE</span><h2>Tell the community what is happening</h2></div><button type="button" className="icon-button" onClick={() => setCreating(false)}><X size={18}/></button></div>
           <div className="form-grid">
             <label className="full">What should we call this?<input value={title} onChange={(e) => setTitle(e.target.value)} required placeholder="Example: Unsafe crossing at SE 82nd and Division"/></label>
-            <label>What is this about?<select value={topicId} onChange={(e) => setTopicId(e.target.value)} required>{topics.map((topic) => <option key={topic.id} value={topic.id}>{topic.name}</option>)}</select></label>
+            <label>What is this about?<select value={topicId} onChange={(e) => setTopicId(e.target.value)} required disabled={!topics.length}>{!topics.length && <option value="">Loading topics…</option>}{topics.map((topic) => <option key={topic.id} value={topic.id}>{topic.name}</option>)}</select></label>
             <label>Where is this happening?<input value={neighborhood} onChange={(e) => setNeighborhood(e.target.value)} placeholder="Neighborhood or District-wide"/></label>
             <label className="full">Tell us what is going on<textarea rows={5} value={summary} onChange={(e) => setSummary(e.target.value)} required placeholder="Describe what you are seeing, why it matters, and who it affects. Plain language is fine."/></label>
-            <div className="form-actions full"><button type="button" className="secondary-button" onClick={() => setCreating(false)}>Cancel</button><button className="primary-button">Post Issue</button></div>
+            {submitError && <div className="full form-error" role="alert">{submitError}</div>}
+            <div className="form-actions full"><button type="button" className="secondary-button" onClick={() => setCreating(false)} disabled={submitting}>Cancel</button><button className="primary-button" disabled={submitting || !topicId}>{submitting ? "Posting…" : "Post Issue"}</button></div>
           </div>
         </form>
       )}

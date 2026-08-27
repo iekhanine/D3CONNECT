@@ -91,20 +91,47 @@ export async function createCivicIssue(input: Omit<CivicIssue, "id" | "created_a
     created_at: new Date().toISOString(),
   };
 
+  // A deliberately unconfigured local/demo build can still behave as a
+  // prototype. Once Supabase is configured, however, a write failure must
+  // never masquerade as a successful local save.
   if (!supabase) return fallback;
 
-  try {
-    const polityRes = await supabase.from("polities").select("id").eq("slug", polity.slug).maybeSingle();
-    if (!polityRes.data?.id) return fallback;
-    const { data, error } = await supabase
-      .from("civic_issues")
-      .insert({ ...input, polity_id: polityRes.data.id, status: "Open", proposal_count: 0 })
-      .select("*")
-      .single();
-    return error || !data ? fallback : (data as CivicIssue);
-  } catch {
-    return fallback;
+  const polityRes = await supabase
+    .from("polities")
+    .select("id")
+    .eq("slug", polity.slug)
+    .maybeSingle();
+
+  if (polityRes.error) {
+    console.error("D3 Connect: failed to resolve polity before creating issue", polityRes.error);
+    throw new Error(`Could not connect this issue to ${polity.districtShortName}. ${polityRes.error.message}`);
   }
+
+  if (!polityRes.data?.id) {
+    throw new Error(`The ${polity.slug} polity is missing from Supabase.`);
+  }
+
+  const { data, error } = await supabase
+    .from("civic_issues")
+    .insert({
+      ...input,
+      polity_id: polityRes.data.id,
+      status: "Open",
+      proposal_count: 0,
+    })
+    .select("*")
+    .single();
+
+  if (error) {
+    console.error("D3 Connect: civic_issues insert failed", { input, error });
+    throw new Error(`The issue was not saved to Supabase. ${error.message}`);
+  }
+
+  if (!data) {
+    throw new Error("The issue was saved but Supabase did not return the new record.");
+  }
+
+  return data as CivicIssue;
 }
 
 export async function createProposal(input: Omit<Proposal, "id" | "updated_at" | "revision_count" | "fork_count" | "status">): Promise<Proposal> {

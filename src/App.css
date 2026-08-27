@@ -361,3 +361,17 @@ html { scrollbar-gutter:stable; }
   .bill-card-head { grid-template-columns:1fr; }.support-big { text-align:left; }.bill-actions { align-items:flex-start; flex-direction:column; }.proxy-summary { grid-template-columns:auto 1fr; }.proxy-summary p { grid-column:1/-1; }.issue-selector { grid-template-columns:1fr; }
   .delegation-network { grid-template-columns:1fr; }.network-routes { min-width:760px; }
 }
+
+/* ==========================================================
+   FORM ERROR 001 — Public save feedback
+   ========================================================== */
+.form-error {
+  padding: 12px 14px;
+  border: 1px solid rgba(185, 28, 28, 0.28);
+  border-radius: 10px;
+  background: rgba(254, 226, 226, 0.72);
+  color: #991b1b;
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 700;
+}
