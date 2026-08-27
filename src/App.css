@@ -39,15 +39,169 @@ html { scrollbar-gutter:stable; }
 .status-dot { width:8px; height:8px; border-radius:50%; display:inline-block; }
 .status-dot.live { background:#26ad71; box-shadow:0 0 0 4px #e5f7ee; } .status-dot.demo { background:#d19a24; box-shadow:0 0 0 4px #fff4d8; }
 .weather-card strong,.weather-card span { display:block; } .weather-card strong { font-size:12px; } .weather-card span { color:var(--muted); font-size:9px; }
-.neighborhood-select { height:46px; min-width:220px; position:relative; display:grid; grid-template-columns:30px minmax(0,1fr) 18px; align-items:center; gap:8px; padding:0 11px 0 9px; border:1px solid #ccd9d3; border-radius:10px; background:#fff; color:var(--ink); box-shadow:0 2px 8px rgba(23,53,44,.05); cursor:pointer; transition:border-color .16s ease, box-shadow .16s ease, background .16s ease; }
-.neighborhood-select:hover { border-color:#9fbbb0; background:#fbfdfc; }
-.neighborhood-select:focus-within { border-color:var(--green-600); box-shadow:0 0 0 3px rgba(31,147,103,.12); }
-.neighborhood-select-icon { width:30px; height:30px; border-radius:8px; display:grid; place-items:center; background:var(--green-50); color:var(--green-700); }
-.neighborhood-select-copy { min-width:0; display:grid; gap:1px; }
-.neighborhood-select-copy small { color:#7a8782; font-size:7px; font-weight:850; letter-spacing:.8px; line-height:1; text-transform:uppercase; }
-.neighborhood-select select { width:100%; min-width:0; appearance:none; -webkit-appearance:none; border:0; outline:0; margin:0; padding:0 18px 0 0; background:transparent; color:#26342f; font:inherit; font-size:10px; font-weight:750; line-height:1.4; cursor:pointer; }
-.neighborhood-select option { color:#17231f; background:#fff; font-weight:500; }
-.neighborhood-select-chevron { position:absolute; right:11px; color:#70807a; pointer-events:none; }
+/* APP CSS 001A — Neighborhood picker */
+.neighborhood-picker {
+  position:relative;
+  width:250px;
+  flex:0 0 250px;
+}
+
+.neighborhood-trigger {
+  width:100%;
+  min-height:50px;
+  border:1px solid #cbd8d2;
+  border-radius:11px;
+  background:#fff;
+  display:grid;
+  grid-template-columns:34px minmax(0,1fr) 20px;
+  align-items:center;
+  gap:10px;
+  padding:7px 12px 7px 9px;
+  color:var(--ink);
+  text-align:left;
+  cursor:pointer;
+  box-shadow:0 2px 8px rgba(23,53,44,.045);
+  transition:border-color .16s ease, box-shadow .16s ease, background .16s ease;
+}
+
+.neighborhood-trigger:hover {
+  border-color:#9eb9ad;
+  background:#fbfdfc;
+}
+
+.neighborhood-trigger:focus-visible,
+.neighborhood-picker.open .neighborhood-trigger {
+  outline:none;
+  border-color:var(--green-600);
+  box-shadow:0 0 0 3px rgba(31,147,103,.12);
+}
+
+.neighborhood-trigger-icon {
+  width:34px;
+  height:34px;
+  border-radius:9px;
+  display:grid;
+  place-items:center;
+  background:var(--green-50);
+  color:var(--green-700);
+}
+
+.neighborhood-trigger-copy {
+  min-width:0;
+  display:grid;
+  gap:2px;
+}
+
+.neighborhood-trigger-copy small {
+  color:#74817c;
+  font-size:9px;
+  font-weight:850;
+  line-height:1;
+  letter-spacing:.75px;
+  text-transform:uppercase;
+}
+
+.neighborhood-trigger-copy strong {
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:#23312c;
+  font-size:13px;
+  font-weight:750;
+  line-height:1.25;
+}
+
+.neighborhood-trigger-chevron {
+  color:#697a73;
+  transition:transform .16s ease, color .16s ease;
+}
+
+.neighborhood-picker.open .neighborhood-trigger-chevron {
+  transform:rotate(180deg);
+  color:var(--green-700);
+}
+
+.neighborhood-menu {
+  position:absolute;
+  top:calc(100% + 8px);
+  right:0;
+  z-index:80;
+  width:300px;
+  max-height:360px;
+  overflow-y:auto;
+  padding:7px;
+  border:1px solid #d5dfda;
+  border-radius:12px;
+  background:#fff;
+  box-shadow:0 18px 45px rgba(16,55,42,.16), 0 4px 12px rgba(16,55,42,.08);
+}
+
+.neighborhood-menu-heading {
+  padding:8px 10px 9px;
+  color:#74817c;
+  font-size:9px;
+  font-weight:850;
+  letter-spacing:.7px;
+  text-transform:uppercase;
+}
+
+.neighborhood-option {
+  width:100%;
+  min-height:40px;
+  border:0;
+  border-radius:8px;
+  background:transparent;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:9px 10px;
+  color:#283630;
+  font-size:13px;
+  font-weight:650;
+  text-align:left;
+  cursor:pointer;
+  transition:background .12s ease, color .12s ease;
+}
+
+.neighborhood-option:hover,
+.neighborhood-option:focus-visible {
+  outline:none;
+  background:#f0f8f4;
+  color:var(--green-800);
+}
+
+.neighborhood-option.selected {
+  background:#e5f5ec;
+  color:var(--green-800);
+  font-weight:800;
+}
+
+.neighborhood-option svg {
+  flex:0 0 auto;
+  color:var(--green-700);
+}
+
+.neighborhood-menu-divider {
+  height:1px;
+  margin:5px 6px;
+  background:#edf1ef;
+}
+
+.neighborhood-menu {
+  scrollbar-width:thin;
+  scrollbar-color:#bccbc4 transparent;
+}
+
+.neighborhood-menu::-webkit-scrollbar { width:8px; }
+.neighborhood-menu::-webkit-scrollbar-track { background:transparent; }
+.neighborhood-menu::-webkit-scrollbar-thumb {
+  border:2px solid transparent;
+  border-radius:10px;
+  background:#bccbc4;
+  background-clip:padding-box;
+}
+
 .content-area { width:100%; flex:1 0 auto; padding:16px 18px 28px; max-width:1500px; margin:0 auto; }
 
 /* APP CSS 002 — Shared UI */
@@ -133,7 +287,7 @@ html { scrollbar-gutter:stable; }
 /* APP CSS 006 — Responsive */
 @media (max-width:1180px) { .dashboard-grid { grid-template-columns:1fr; }.right-column { grid-template-columns:1fr 1fr; }.issue-grid { grid-template-columns:repeat(4,1fr); }.resource-cards { grid-template-columns:repeat(2,1fr); } }
 @media (max-width:900px) { .app-shell { grid-template-columns:76px 1fr; }.sidebar { width:76px; padding:18px 8px; }.brand { justify-content:center; padding-left:0; padding-right:0; }.brand span:last-child,.nav-item span,.side-card,.sidebar-footer small,.language-button { display:none; }.side-nav { margin-top:8px; }.nav-item { justify-content:center; padding:12px; }.app-body { grid-column:2; }.topbar { padding:0 15px; }.district-title div { display:none; }.source-pill,.weather-card { display:none; }.hero-card { grid-template-columns:1fr; }.district-stats { grid-template-columns:repeat(4,1fr); }.district-stats>strong { grid-column:1/-1; }.district-stats div { grid-template-columns:1fr; }.promo-grid,.newsletter { grid-template-columns:1fr; }.card-grid,.about-grid { grid-template-columns:1fr; } }
-@media (max-width:650px) { .footer-dock { padding:0 9px 70px; } .app-shell { display:block; }.sidebar { position:fixed; inset:auto 0 0 0; width:auto; height:62px; z-index:30; padding:6px; flex-direction:row; align-items:center; }.brand,.side-card,.sidebar-footer { display:none; }.side-nav { display:grid; grid-template-columns:repeat(8,1fr); width:100%; gap:2px; margin:0; overflow-x:auto; }.nav-item { min-width:48px; padding:9px 7px; border-radius:8px; }.app-body { width:100%; }.topbar { height:64px; }.content-area { padding:10px 9px 20px; }.neighborhood-select { min-width:178px; } .neighborhood-select-copy small { display:none; }.hero-card { padding:20px; min-height:330px; }.hero-content h1 { font-size:25px; }.district-stats { grid-template-columns:1fr 1fr; }.issue-grid { grid-template-columns:repeat(3,1fr); }.right-column { grid-template-columns:1fr; }.promo-grid { grid-template-columns:1fr; }.resource-cards { grid-template-columns:1fr; }.newsletter form { flex-direction:column; gap:7px; }.newsletter input,.newsletter button { border-radius:8px; min-height:41px; }.site-footer { flex-direction:column; }.form-grid { grid-template-columns:1fr; }.timeline-event { grid-template-columns:1fr; }.timeline-date { border-right:0; border-bottom:1px solid var(--line); padding-bottom:10px; }.page-title { padding:20px; }.page-title h1 { font-size:23px; } }
+@media (max-width:650px) { .footer-dock { padding:0 9px 70px; } .app-shell { display:block; }.sidebar { position:fixed; inset:auto 0 0 0; width:auto; height:62px; z-index:30; padding:6px; flex-direction:row; align-items:center; }.brand,.side-card,.sidebar-footer { display:none; }.side-nav { display:grid; grid-template-columns:repeat(8,1fr); width:100%; gap:2px; margin:0; overflow-x:auto; }.nav-item { min-width:48px; padding:9px 7px; border-radius:8px; }.app-body { width:100%; }.topbar { height:64px; }.content-area { padding:10px 9px 20px; }.neighborhood-picker { width:190px; flex-basis:190px; } .neighborhood-trigger-copy small { display:none; } .neighborhood-menu { width:min(300px,calc(100vw - 18px)); }.hero-card { padding:20px; min-height:330px; }.hero-content h1 { font-size:25px; }.district-stats { grid-template-columns:1fr 1fr; }.issue-grid { grid-template-columns:repeat(3,1fr); }.right-column { grid-template-columns:1fr; }.promo-grid { grid-template-columns:1fr; }.resource-cards { grid-template-columns:1fr; }.newsletter form { flex-direction:column; gap:7px; }.newsletter input,.newsletter button { border-radius:8px; min-height:41px; }.site-footer { flex-direction:column; }.form-grid { grid-template-columns:1fr; }.timeline-event { grid-template-columns:1fr; }.timeline-date { border-right:0; border-bottom:1px solid var(--line); padding-bottom:10px; }.page-title { padding:20px; }.page-title h1 { font-size:23px; } }
 
 /* ==========================================================
    APP CSS 007 — POSPROX / GOVERNANCE NAVIGATION
