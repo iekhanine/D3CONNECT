@@ -1,16 +1,11 @@
 import {
-  Building2,
-  CalendarDays,
   CircleHelp,
   GitFork,
-  HeartHandshake,
   Home,
   Info,
-  Landmark,
   MessageCircle,
   Network,
   Scale,
-  Store,
   UserRoundCog,
 } from "lucide-react";
 import { polity } from "../config/polity";
@@ -22,20 +17,13 @@ interface Props {
 }
 
 const governanceItems: Array<{ key: ViewKey; label: string; icon: typeof Home }> = [
-  { key: "home", label: "Civic Home", icon: Home },
-  { key: "civic-issues", label: "Issues", icon: MessageCircle },
-  { key: "proposals", label: "Proposals", icon: GitFork },
-  { key: "bills", label: "Bills & Policy", icon: Scale },
-  { key: "proxy", label: "My Proxy", icon: UserRoundCog },
-  { key: "delegation", label: "Delegation Network", icon: Network },
-];
-
-const communityItems: Array<{ key: ViewKey; label: string; icon: typeof Home }> = [
-  { key: "projects", label: "Project Tracker", icon: Landmark },
-  { key: "resources", label: "Resources", icon: HeartHandshake },
-  { key: "calendar", label: "Community Calendar", icon: CalendarDays },
-  { key: "businesses", label: "Business Directory", icon: Store },
-  { key: "about", label: "About", icon: Info },
+  { key: "home", label: "Home", icon: Home },
+  { key: "about", label: "How It Works", icon: Info },
+  { key: "civic-issues", label: "Problems & Ideas", icon: MessageCircle },
+  { key: "proposals", label: "Suggested Solutions", icon: GitFork },
+  { key: "bills", label: "Decisions & Voting", icon: Scale },
+  { key: "proxy", label: "People I Trust", icon: UserRoundCog },
+  { key: "delegation", label: "Where My Voice Goes", icon: Network },
 ];
 
 export default function Sidebar({ activeView, onNavigate }: Props) {
@@ -46,8 +34,8 @@ export default function Sidebar({ activeView, onNavigate }: Props) {
         <span><strong>CONNECT</strong><small>{polity.jurisdictionName.toUpperCase()}</small></span>
       </button>
 
-      <div className="nav-section-label">GOVERNANCE</div>
-      <nav className="side-nav" aria-label="Governance navigation">
+      <div className="nav-section-label">YOUR VOICE</div>
+      <nav className="side-nav" aria-label="D3 Connect navigation">
         {governanceItems.map(({ key, label, icon: Icon }) => (
           <button key={key} className={activeView === key ? "nav-item active" : "nav-item"} onClick={() => onNavigate(key)}>
             <Icon size={18} strokeWidth={1.9}/><span>{label}</span>
@@ -55,18 +43,10 @@ export default function Sidebar({ activeView, onNavigate }: Props) {
         ))}
       </nav>
 
-      <div className="nav-section-label secondary">COMMUNITY</div>
-      <nav className="side-nav community-nav" aria-label="Community navigation">
-        {communityItems.map(({ key, label, icon: Icon }) => (
-          <button key={key} className={activeView === key ? "nav-item active" : "nav-item"} onClick={() => onNavigate(key)}>
-            <Icon size={18} strokeWidth={1.9}/><span>{label}</span>
-          </button>
-        ))}
-      </nav>
 
       <div className="side-card">
-        <Building2 size={22}/><strong>Reusable civic engine</strong>
-        <p>This deployment is configured for {polity.districtShortName}. The same PosProx engine can be redeployed for another district through polity configuration and data.</p>
+        <CircleHelp size={22}/><strong>Not sure where to start?</strong>
+        <p>Start with Problems & Ideas. Tell us what is happening in plain language. You do not need to know which City office, rule, or process applies.</p>
       </div>
 
       <div className="sidebar-footer">

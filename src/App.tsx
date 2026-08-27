@@ -16,16 +16,12 @@ import {
 } from "./lib/governanceService";
 import type {
   Bill,
-  Business,
   Citizen,
   CivicIssue,
-  CommunityEvent,
   Neighborhood,
-  Project,
   Proposal,
   ProxyAssignment,
   ProxyDisposition,
-  Resource,
   Topic,
   ViewKey,
 } from "./types";
@@ -39,12 +35,10 @@ export default function App() {
   const [selectedNeighborhood, setSelectedNeighborhood] = useState("All");
 
   // ========================================================
-  // APP 002 — Existing community portal data
+  // APP 002 — Neighborhood metadata
+  // Used for resident context and issue reporting, not as a
+  // separate community-portal feature set.
   // ========================================================
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [resources, setResources] = useState<Resource[]>([]);
-  const [events, setEvents] = useState<CommunityEvent[]>([]);
-  const [businesses, setBusinesses] = useState<Business[]>([]);
   const [neighborhoods, setNeighborhoods] = useState<Neighborhood[]>([]);
 
   // ========================================================
@@ -69,10 +63,6 @@ export default function App() {
 
   useEffect(() => {
     Promise.all([loadDashboardData(), loadGovernanceData()]).then(([community, governance]) => {
-      setProjects(community.projects);
-      setResources(community.resources);
-      setEvents(community.events);
-      setBusinesses(community.businesses);
       setNeighborhoods(community.neighborhoods);
 
       setTopics(governance.topics);
@@ -91,10 +81,6 @@ export default function App() {
     [citizens, currentCitizenId],
   );
 
-  const filteredBusinesses = useMemo(
-    () => selectedNeighborhood === "All" ? businesses : businesses.filter((business) => business.neighborhood === selectedNeighborhood),
-    [businesses, selectedNeighborhood],
-  );
 
   function navigate(view: ViewKey) {
     setActiveView(view);
@@ -181,29 +167,25 @@ export default function App() {
               onNavigate={navigate}
             />
           ) : (
-<SectionViews
-  view={activeView}
-  projects={projects}
-  resources={resources}
-  events={events}
-  businesses={filteredBusinesses}
-  neighborhoods={neighborhoods}
-  selectedNeighborhood={selectedNeighborhood}
-/>
+            <SectionViews view={activeView} />
           )}
 
-          <section className="newsletter">
-            <div><span className="eyebrow light">STAY IN THE LOOP</span><h2>{polity.districtShortName} updates without the scavenger hunt.</h2><p>Get civic issues, proposals, policy changes, projects, and community events in one concise digest.</p></div>
-            {subscribed ? <div className="subscription-success">✓ You're on the list.</div> : <form onSubmit={handleSubscribe}><input type="email" value={email} onChange={(e)=>setEmail(e.target.value)} placeholder="Enter your email" required/><button>Subscribe</button></form>}
-          </section>
-
-          <footer className="site-footer">
-            <span>{polity.productName} is an independent civic-governance prototype and is not owned or operated by the City of Portland.</span>
-            <span>PosProx prototype · Built by OneTime Labs · 2026</span>
-          </footer>
         </main>
+
+        <div className="footer-dock">
+          <div className="footer-dock-inner">
+            <section className="newsletter">
+              <div><span className="eyebrow light">STAY IN THE LOOP</span><h2>{polity.districtShortName} updates without the scavenger hunt.</h2><p>Get neighborhood problems, proposed solutions, and community decisions in one concise digest.</p></div>
+              {subscribed ? <div className="subscription-success">✓ You're on the list.</div> : <form onSubmit={handleSubscribe}><input type="email" value={email} onChange={(e)=>setEmail(e.target.value)} placeholder="Enter your email" required/><button>Subscribe</button></form>}
+            </section>
+
+            <footer className="site-footer">
+              <span>{polity.productName} is an independent community participation prototype and is not owned or operated by the City of Portland.</span>
+              <span>Built by OneTime Labs · 2026</span>
+            </footer>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
-

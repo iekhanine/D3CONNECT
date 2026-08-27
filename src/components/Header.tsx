@@ -1,4 +1,4 @@
-import { ChevronDown, MapPin, Network, UserRound } from "lucide-react";
+import { ChevronDown, MapPin, UserRound } from "lucide-react";
 import { polity } from "../config/polity";
 import type { Citizen, Neighborhood } from "../types";
 
@@ -19,14 +19,25 @@ export default function Header({ neighborhoods, selectedNeighborhood, onSelectNe
       </div>
 
       <div className="topbar-actions">
-        <div className="source-pill" title={dataSource === "supabase" ? "Connected to the configured polity database" : "Demo governance data is active until the multi-polity schema is installed"}>
+        <div className="source-pill" title={dataSource === "supabase" ? "Connected to live D3 Connect data" : "Using sample data while D3 Connect is in prototype mode"}>
           <span className={dataSource === "supabase" ? "status-dot live" : "status-dot demo"}/>
-          {dataSource === "supabase" ? "Live polity" : "Prototype mode"}
+          {dataSource === "supabase" ? "Live data" : "Demo data"}
         </div>
         <div className="citizen-pill"><UserRound size={17}/><div><strong>{citizen?.display_name ?? "Demo Citizen"}</strong><span>{citizen?.neighborhood ?? polity.districtShortName}</span></div></div>
-        <div className="engine-pill"><Network size={17}/><span>{polity.slug}</span></div>
         <label className="neighborhood-select">
-          <MapPin size={17}/><select value={selectedNeighborhood} onChange={(e)=>onSelectNeighborhood(e.target.value)}><option value="All">All neighborhoods</option>{neighborhoods.map((n)=><option key={n.id} value={n.name}>{n.name}</option>)}</select><ChevronDown size={16}/>
+          <span className="neighborhood-select-icon"><MapPin size={16}/></span>
+          <span className="neighborhood-select-copy">
+            <small>Neighborhood</small>
+            <select
+              aria-label="Choose neighborhood"
+              value={selectedNeighborhood}
+              onChange={(e)=>onSelectNeighborhood(e.target.value)}
+            >
+              <option value="All">All neighborhoods</option>
+              {neighborhoods.map((n)=><option key={n.id} value={n.name}>{n.name}</option>)}
+            </select>
+          </span>
+          <ChevronDown className="neighborhood-select-chevron" size={16}/>
         </label>
       </div>
     </header>

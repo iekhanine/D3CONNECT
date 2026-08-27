@@ -25,56 +25,56 @@ export default function GovernanceHome({ topics, civicIssues, proposals, bills, 
 
   return (
     <div className="governance-home">
-      {/* GOVERNANCE HOME 001 — Core proposition */}
+      {/* GOVERNANCE HOME 001 — Plain-language starting point */}
       <section className="governance-hero">
         <div className="governance-hero-copy">
-          <span className="eyebrow light">D3 CONNECT · PARTICIPATORY GOVERNANCE PROTOTYPE</span>
-          <h1>{polity.tagline}</h1>
+          <span className="eyebrow light">D3 CONNECT · PROBLEMS, IDEAS, ACTION</span>
+          <h1>Help shape {polity.districtShortName}.</h1>
           <p>
-            Take direct responsibility for the subjects you care about and understand. Delegate the rest to people you trust,
-            while keeping the ability to reclaim your voice at any time.
+            See problems your neighbors have raised, suggest ways to fix them, support decisions you agree with,
+            or choose someone you trust to handle topics you do not have time to follow.
           </p>
           <div className="hero-actions">
-            <button className="primary-button bright" onClick={() => onNavigate("civic-issues")}>Explore Issues <ArrowRight size={16} /></button>
-            <button className="ghost-button" onClick={() => onNavigate("proxy")}>Manage My Proxy</button>
+            <button className="primary-button bright" onClick={() => onNavigate("civic-issues")}>See What Needs Attention <ArrowRight size={16} /></button>
+            <button className="ghost-button" onClick={() => onNavigate("proxy")}>Choose Someone I Trust</button>
           </div>
         </div>
 
-        <div className="governance-flow" aria-label="PosProx governance flow">
-          <div><span>1</span><strong>Issue</strong><small>Anyone can raise something the polity should act on.</small></div>
+        <div className="governance-flow" aria-label="How D3 Connect works">
+          <div><span>1</span><strong>Tell us what is happening</strong><small>Raise a problem, concern, or improvement you want to see.</small></div>
           <ArrowRight size={18} />
-          <div><span>2</span><strong>Proposal</strong><small>Collaborate, revise, and fork possible solutions.</small></div>
+          <div><span>2</span><strong>Suggest a solution</strong><small>Share an idea for how the issue could be fixed or improved.</small></div>
           <ArrowRight size={18} />
-          <div><span>3</span><strong>Bill</strong><small>A ready proposal is locked for attached support.</small></div>
+          <div><span>3</span><strong>Support a decision</strong><small>When a solution is ready, the community can support it.</small></div>
           <ArrowRight size={18} />
-          <div><span>4</span><strong>In Force</strong><small>Support above {percent(polity.supportThreshold)} activates it.</small></div>
+          <div><span>4</span><strong>It takes effect</strong><small>At {percent(polity.supportThreshold)} support, the decision becomes active.</small></div>
         </div>
       </section>
 
       {/* GOVERNANCE HOME 002 — Live civic snapshot */}
       <section className="governance-stat-grid">
-        <article><Scale size={22}/><span>Open civic issues</span><strong>{openIssues}</strong><small>Questions currently seeking action</small></article>
-        <article><GitFork size={22}/><span>Active proposals</span><strong>{activeProposals}</strong><small>Editable and forkable solutions</small></article>
-        <article><Vote size={22}/><span>Bills in force</span><strong>{inForce}</strong><small>Continuously supported policy</small></article>
-        <article><Network size={22}/><span>Policy scopes</span><strong>{topics.length}</strong><small>Delegate by subject, not personality</small></article>
+        <article><Scale size={22}/><span>Issues being discussed</span><strong>{openIssues}</strong><small>Problems and ideas that still need attention</small></article>
+        <article><GitFork size={22}/><span>Solutions being worked on</span><strong>{activeProposals}</strong><small>Community ideas that can still be improved</small></article>
+        <article><Vote size={22}/><span>Active decisions</span><strong>{inForce}</strong><small>Policies that currently have enough support</small></article>
+        <article><Network size={22}/><span>Topics you can manage</span><strong>{topics.length}</strong><small>Handle them yourself or choose someone you trust</small></article>
       </section>
 
-      {/* GOVERNANCE HOME 003 — Principle cards */}
+      {/* GOVERNANCE HOME 003 — Simple participation choices */}
       <section className="panel governance-principles">
         <div className="section-heading">
-          <div><span className="eyebrow">HOW D3 CONNECT WORKS</span><h2>Responsibility is universal. Attention is not.</h2></div>
+          <div><span className="eyebrow">HOW D3 CONNECT WORKS</span><h2>You do not have to follow everything to have a voice.</h2></div>
         </div>
         <div className="principle-grid">
-          <article><UserRoundCog size={27}/><h3>Keep what you can handle</h3><p>Vote directly where you have interest, competence, energy, and resources.</p></article>
-          <article><Network size={27}/><h3>Delegate the rest</h3><p>Write topic-specific proxies to people you trust. A proxy may return responsibility or pass it onward, depending on your instruction.</p></article>
-          <article><ShieldCheck size={27}/><h3>Support remains revocable</h3><p>Your support stays attached until you remove it. Laws and policies therefore remain accountable to the living electorate.</p></article>
+          <article><UserRoundCog size={27}/><h3>Handle the topics you care about</h3><p>Follow issues and support decisions directly when a subject matters to you.</p></article>
+          <article><Network size={27}/><h3>Let someone you trust help</h3><p>For topics you do not follow, choose another community member you trust to handle them for you.</p></article>
+          <article><ShieldCheck size={27}/><h3>Change your mind anytime</h3><p>You can take a topic back, choose someone else, support a decision, or remove your support whenever you want.</p></article>
         </div>
       </section>
 
-      {/* GOVERNANCE HOME 004 — Current bills */}
+      {/* GOVERNANCE HOME 004 — Current community decisions */}
       <section className="panel bill-preview-panel">
         <div className="section-heading">
-          <div><span className="eyebrow">CONTINUOUS CONSENT</span><h2>Current Bills & Policies</h2></div>
+          <div><span className="eyebrow">WHAT THE COMMUNITY IS DECIDING</span><h2>Current Decisions & Policies</h2></div>
           <button className="text-button" onClick={() => onNavigate("bills")}>View all <ArrowRight size={15}/></button>
         </div>
         <div className="bill-preview-list">
