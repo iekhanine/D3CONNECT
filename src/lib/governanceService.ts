@@ -288,6 +288,66 @@ export async function respondToProxyAssignment(
 }
 
 // ==========================================================
+// GOVERNANCE SERVICE 004A — Demo incoming proxy requests
+// Creates real pending Supabase rows directed at the demo citizen so
+// the consent workflow can be exercised during client walkthroughs.
+// ==========================================================
+
+export async function createDemoIncomingProxyRequests(
+  proxyId: string,
+  ownerIds: string[],
+): Promise<ProxyAssignment[]> {
+  const client = requireSupabase();
+  const polityId = await getPolityId();
+  const uniqueOwnerIds = [...new Set(ownerIds)]
+    .filter((ownerId) => ownerId !== proxyId)
+    .slice(0, 3);
+
+  if (uniqueOwnerIds.length === 0) {
+    throw new Error("No demo citizens are available to offer a proxy.");
+  }
+
+  // Each citizen can have only one active general proxy. For a repeatable
+  // demo, retire any previous active assignment from these demo owners
+  // before creating a fresh pending request to the demo citizen.
+  const deactivate = await client
+    .from("proxy_assignments")
+    .update({ active: false })
+    .eq("polity_id", polityId)
+    .in("owner_id", uniqueOwnerIds)
+    .eq("active", true);
+
+  if (deactivate.error) {
+    throw new Error(`Could not prepare the demo proxy requests: ${deactivate.error.message}`);
+  }
+
+  const createdAt = new Date().toISOString();
+  const rows = uniqueOwnerIds.map((ownerId) => ({
+    id: createId("px"),
+    polity_id: polityId,
+    owner_id: ownerId,
+    proxy_id: proxyId,
+    status: "pending" as const,
+    active: true,
+    created_at: createdAt,
+    responded_at: null,
+  }));
+
+  const { data, error } = await client
+    .from("proxy_assignments")
+    .insert(rows)
+    .select("*");
+
+  if (error) {
+    throw new Error(`The demo proxy requests were not created: ${error.message}`);
+  }
+
+  return ((data ?? []) as Array<Record<string, unknown>>).map((row) =>
+    normalizeProxyAssignment(row),
+  );
+}
+
+// ==========================================================
 // GOVERNANCE SERVICE 005 — Bill support
 // ==========================================================
 

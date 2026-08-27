@@ -45,6 +45,7 @@ interface Props {
   onSaveProxy: (proxyId: string) => Promise<void>;
   onRemoveProxy: (ownerId?: string) => Promise<void>;
   onRespondProxy: (assignmentId: string, status: Exclude<ProxyStatus, "pending">) => Promise<void>;
+  onGenerateDemoProxyRequests: () => Promise<void>;
   onNavigate: (view: ViewKey) => void;
 }
 
@@ -355,7 +356,7 @@ function BillsView({ bills, onToggleBillSupport }: Props) {
   );
 }
 
-function ProxyView({ citizens, proxyAssignments, currentCitizenId, onSaveProxy, onRemoveProxy, onRespondProxy }: Props) {
+function ProxyView({ citizens, proxyAssignments, currentCitizenId, onSaveProxy, onRemoveProxy, onRespondProxy, onGenerateDemoProxyRequests }: Props) {
   const outgoing = proxyAssignments.find(
     (assignment) => assignment.owner_id === currentCitizenId && assignment.active,
   );
@@ -481,12 +482,33 @@ function ProxyView({ citizens, proxyAssignments, currentCitizenId, onSaveProxy, 
               <h2>I decide whether to accept them</h2>
               <p>Nobody can make you carry their proxy. Pending requests require an explicit choice, and an accepted proxy can be returned later.</p>
             </div>
-            {pendingIncoming.length > 0 && <span className="proxy-request-count">{pendingIncoming.length} pending</span>}
+            <div className="proxy-incoming-heading-actions">
+              {pendingIncoming.length > 0 && <span className="proxy-request-count">{pendingIncoming.length} pending</span>}
+              <button
+                type="button"
+                className="secondary-button proxy-demo-button"
+                onClick={onGenerateDemoProxyRequests}
+              >
+                <Plus size={14}/> Generate Demo Requests
+              </button>
+            </div>
           </div>
 
           <div className="proxy-request-list">
             {incoming.length === 0 ? (
-              <div className="proxy-empty-inline">You do not currently have any proxy requests.</div>
+              <div className="proxy-empty-demo-state">
+                <div>
+                  <strong>No proxy requests yet.</strong>
+                  <span>Create a few incoming demo requests so you can test accepting and refusing delegated proxies.</span>
+                </div>
+                <button
+                  type="button"
+                  className="primary-button"
+                  onClick={onGenerateDemoProxyRequests}
+                >
+                  <Plus size={14}/> Generate Demo Proxy Requests
+                </button>
+              </div>
             ) : incoming.map((assignment) => {
               const owner = citizen(assignment.owner_id);
               return (

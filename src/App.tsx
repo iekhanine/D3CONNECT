@@ -9,6 +9,7 @@ import { polity } from "./config/polity";
 import { loadDashboardData, subscribe } from "./lib/dataService";
 import {
   createCivicIssue,
+  createDemoIncomingProxyRequests,
   createProposal,
   loadGovernanceData,
   removeProxyAssignment,
@@ -281,6 +282,32 @@ export default function App() {
     }
   }
 
+  async function handleGenerateDemoProxyRequests() {
+    try {
+      const preferredNames = ["Maya Chen", "Lena Park", "Sam Rivera"];
+      const preferred = preferredNames
+        .map((name) => citizens.find((citizen) => citizen.display_name === name)?.id)
+        .filter((id): id is string => Boolean(id) && id !== currentCitizenId);
+
+      const fallback = citizens
+        .filter((citizen) => citizen.id !== currentCitizenId && !preferred.includes(citizen.id))
+        .map((citizen) => citizen.id);
+
+      await createDemoIncomingProxyRequests(
+        currentCitizenId,
+        [...preferred, ...fallback].slice(0, 3),
+      );
+
+      await refreshGovernanceState();
+    } catch (error) {
+      window.alert(
+        error instanceof Error
+          ? error.message
+          : "The demo proxy requests could not be created.",
+      );
+    }
+  }
+
   async function handleSubscribe(event: React.FormEvent) {
     event.preventDefault();
     if (!email.trim()) return;
@@ -359,6 +386,7 @@ export default function App() {
               onSaveProxy={handleSaveProxy}
               onRemoveProxy={handleRemoveProxy}
               onRespondProxy={handleRespondProxy}
+              onGenerateDemoProxyRequests={handleGenerateDemoProxyRequests}
               onNavigate={navigate}
             />
           ) : (
