@@ -16,16 +16,12 @@ import {
 } from "./lib/governanceService";
 import type {
   Bill,
-  Business,
   Citizen,
   CivicIssue,
-  CommunityEvent,
   Neighborhood,
-  Project,
   Proposal,
   ProxyAssignment,
   ProxyDisposition,
-  Resource,
   Topic,
   ViewKey,
 } from "./types";
@@ -39,16 +35,13 @@ export default function App() {
   const [selectedNeighborhood, setSelectedNeighborhood] = useState("All");
 
   // ========================================================
-  // APP 002 — Existing community portal data
+  // APP 002 — Neighborhood metadata
+  // Used for resident context and issue reporting.
   // ========================================================
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [resources, setResources] = useState<Resource[]>([]);
-  const [events, setEvents] = useState<CommunityEvent[]>([]);
-  const [businesses, setBusinesses] = useState<Business[]>([]);
   const [neighborhoods, setNeighborhoods] = useState<Neighborhood[]>([]);
 
   // ========================================================
-  // APP 003 — PosProx governance state
+  // APP 003 — Governance state
   // ========================================================
   const [topics, setTopics] = useState<Topic[]>([]);
   const [citizens, setCitizens] = useState<Citizen[]>([]);
@@ -59,7 +52,9 @@ export default function App() {
   const [dataSource, setDataSource] = useState<"supabase" | "demo">("demo");
   const [loading, setLoading] = useState(true);
 
-  const currentCitizenId = citizens.find((citizen) => citizen.display_name === "You (Demo Citizen)")?.id ?? polity.demoCitizenId;
+  const currentCitizenId =
+    citizens.find((citizen) => citizen.display_name === "You (Demo Citizen)")?.id ??
+    polity.demoCitizenId;
 
   // ========================================================
   // APP 004 — Newsletter state
@@ -68,22 +63,20 @@ export default function App() {
   const [subscribed, setSubscribed] = useState(false);
 
   useEffect(() => {
-    Promise.all([loadDashboardData(), loadGovernanceData()]).then(([community, governance]) => {
-      setProjects(community.projects);
-      setResources(community.resources);
-      setEvents(community.events);
-      setBusinesses(community.businesses);
-      setNeighborhoods(community.neighborhoods);
+    Promise.all([loadDashboardData(), loadGovernanceData()]).then(
+      ([community, governance]) => {
+        setNeighborhoods(community.neighborhoods);
 
-      setTopics(governance.topics);
-      setCitizens(governance.citizens);
-      setCivicIssues(governance.civicIssues);
-      setProposals(governance.proposals);
-      setBills(governance.bills);
-      setProxyAssignments(governance.proxyAssignments);
-      setDataSource(governance.source);
-      setLoading(false);
-    });
+        setTopics(governance.topics);
+        setCitizens(governance.citizens);
+        setCivicIssues(governance.civicIssues);
+        setProposals(governance.proposals);
+        setBills(governance.bills);
+        setProxyAssignments(governance.proxyAssignments);
+        setDataSource(governance.source);
+        setLoading(false);
+      },
+    );
   }, []);
 
   const currentCitizen = useMemo(
@@ -91,11 +84,9 @@ export default function App() {
     [citizens, currentCitizenId],
   );
 
-  const filteredBusinesses = useMemo(
-    () => selectedNeighborhood === "All" ? businesses : businesses.filter((business) => business.neighborhood === selectedNeighborhood),
-    [businesses, selectedNeighborhood],
-  );
-
+  // ========================================================
+  // APP 005 — Supabase state synchronization
+  // ========================================================
   async function refreshGovernanceState() {
     const governance = await loadGovernanceData();
 
@@ -112,65 +103,134 @@ export default function App() {
     setActiveView(view);
     window.scrollTo({ top: 0, behavior: "smooth" });
 
-    // Governance data is persisted in Supabase. Refresh it whenever a user
-    // returns to one of these sections so navigation can never restore an
-    // older in-memory snapshot.
+    // Supabase is authoritative for governance data. Refresh whenever
+    // the resident returns to a governance section so navigation cannot
+    // restore an older React snapshot.
     if (["civic-issues", "proposals", "bills", "proxy", "delegation"].includes(view)) {
       void refreshGovernanceState();
     }
   }
 
   // ========================================================
-  // APP 005 — Governance actions
+  // APP 006 — Governance actions
   // ========================================================
-  async function handleCreateIssue(input: { title: string; summary: string; topic_id: string; neighborhood?: string | null }) {
-    const created = await createCivicIssue({ ...input, created_by: currentCitizenId });
+  async function handleCreateIssue(input: {
+    title: string;
+    summary: string;
+    topic_id: string;
+    neighborhood?: string | null;
+  }) {
+    const created = await createCivicIssue({
+      ...input,
+      created_by: currentCitizenId,
+    });
 
-    // Show the saved issue immediately, then reconcile with Supabase so the
-    // parent application state and the database are guaranteed to agree.
-    setCivicIssues((current) => [created, ...current.filter((issue) => issue.id !== created.id)]);
+    // Show it immediately, then reconcile against the database.
+    setCivicIssues((current) => [
+      created,
+      ...current.filter((issue) => issue.id !== created.id),
+    ]);
+
     await refreshGovernanceState();
   }
 
-  async function handleCreateProposal(input: { title: string; summary: string; body: string; issue_ids: string[] }) {
-    const created = await createProposal({ ...input, maintainer_id: currentCitizenId, parent_proposal_id: null });
+  async function handleCreateProposal(input: {
+    title: string;
+    summary: string;
+    body: string;
+    issue_ids: string[];
+  }) {
+    const created = await createProposal({
+      ...input,
+      maintainer_id: currentCitizenId,
+      parent_proposal_id: null,
+    });
+
     setProposals((current) => [created, ...current]);
-    setCivicIssues((current) => current.map((issue) => input.issue_ids.includes(issue.id) ? { ...issue, proposal_count: issue.proposal_count + 1 } : issue));
+    setCivicIssues((current) =>
+      current.map((issue) =>
+        input.issue_ids.includes(issue.id)
+          ? { ...issue, proposal_count: issue.proposal_count + 1 }
+          : issue,
+      ),
+    );
   }
 
   async function handleToggleBillSupport(billId: string, support: boolean) {
     const bill = bills.find((candidate) => candidate.id === billId);
     if (!bill) return;
-    const updated = await toggleBillSupport(bill, currentCitizenId, support);
-    setBills((current) => current.map((candidate) => candidate.id === billId ? updated : candidate));
+
+    const updated = await toggleBillSupport(
+      bill,
+      currentCitizenId,
+      support,
+    );
+
+    setBills((current) =>
+      current.map((candidate) =>
+        candidate.id === billId ? updated : candidate,
+      ),
+    );
   }
 
-  async function handleSaveProxy(topicId: string, proxyId: string, disposition: ProxyDisposition) {
-    const saved = await saveProxyAssignment({ owner_id: currentCitizenId, proxy_id: proxyId, topic_id: topicId, disposition });
+  async function handleSaveProxy(
+    topicId: string,
+    proxyId: string,
+    disposition: ProxyDisposition,
+  ) {
+    const saved = await saveProxyAssignment({
+      owner_id: currentCitizenId,
+      proxy_id: proxyId,
+      topic_id: topicId,
+      disposition,
+    });
+
     setProxyAssignments((current) => [
-      ...current.filter((assignment) => !(assignment.owner_id === currentCitizenId && assignment.topic_id === topicId)),
+      ...current.filter(
+        (assignment) =>
+          !(
+            assignment.owner_id === currentCitizenId &&
+            assignment.topic_id === topicId
+          ),
+      ),
       saved,
     ]);
   }
 
   async function handleRemoveProxy(topicId: string) {
     await removeProxyAssignment(currentCitizenId, topicId);
-    setProxyAssignments((current) => current.filter((assignment) => !(assignment.owner_id === currentCitizenId && assignment.topic_id === topicId)));
+
+    setProxyAssignments((current) =>
+      current.filter(
+        (assignment) =>
+          !(
+            assignment.owner_id === currentCitizenId &&
+            assignment.topic_id === topicId
+          ),
+      ),
+    );
   }
 
   async function handleSubscribe(event: React.FormEvent) {
     event.preventDefault();
     if (!email.trim()) return;
+
     await subscribe(email.trim(), selectedNeighborhood);
     setSubscribed(true);
     setEmail("");
   }
 
-  const isGovernanceView = ["civic-issues", "proposals", "bills", "proxy", "delegation"].includes(activeView);
+  const isGovernanceView = [
+    "civic-issues",
+    "proposals",
+    "bills",
+    "proxy",
+    "delegation",
+  ].includes(activeView);
 
   return (
     <div className="app-shell">
-      <Sidebar activeView={activeView} onNavigate={navigate}/>
+      <Sidebar activeView={activeView} onNavigate={navigate} />
 
       <div className="app-body">
         <Header
@@ -183,9 +243,18 @@ export default function App() {
 
         <main className="content-area">
           {loading ? (
-            <div className="loading-state"><div className="spinner"/><span>Loading {polity.productName}…</span></div>
+            <div className="loading-state">
+              <div className="spinner" />
+              <span>Loading {polity.productName}…</span>
+            </div>
           ) : activeView === "home" ? (
-            <GovernanceHome topics={topics} civicIssues={civicIssues} proposals={proposals} bills={bills} onNavigate={navigate}/>
+            <GovernanceHome
+              topics={topics}
+              civicIssues={civicIssues}
+              proposals={proposals}
+              bills={bills}
+              onNavigate={navigate}
+            />
           ) : isGovernanceView ? (
             <GovernanceViews
               view={activeView}
@@ -204,24 +273,40 @@ export default function App() {
               onNavigate={navigate}
             />
           ) : (
-            <SectionViews
-              view={activeView}
-              projects={projects}
-              resources={resources}
-              events={events}
-              businesses={filteredBusinesses}
-              neighborhoods={neighborhoods}
-              selectedNeighborhood={selectedNeighborhood}
-            />
+            <SectionViews view={activeView} />
           )}
 
           <section className="newsletter">
-            <div><span className="eyebrow light">STAY IN THE LOOP</span><h2>{polity.districtShortName} updates without the scavenger hunt.</h2><p>Get neighborhood issues, proposed solutions, community decisions, projects, and local events in one concise digest.</p></div>
-            {subscribed ? <div className="subscription-success">✓ You're on the list.</div> : <form onSubmit={handleSubscribe}><input type="email" value={email} onChange={(e)=>setEmail(e.target.value)} placeholder="Enter your email" required/><button>Subscribe</button></form>}
+            <div>
+              <span className="eyebrow light">STAY IN THE LOOP</span>
+              <h2>{polity.districtShortName} updates without the scavenger hunt.</h2>
+              <p>
+                Get neighborhood problems, proposed solutions, and community decisions
+                in one concise digest.
+              </p>
+            </div>
+
+            {subscribed ? (
+              <div className="subscription-success">✓ You're on the list.</div>
+            ) : (
+              <form onSubmit={handleSubscribe}>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="Enter your email"
+                  required
+                />
+                <button>Subscribe</button>
+              </form>
+            )}
           </section>
 
           <footer className="site-footer">
-            <span>{polity.productName} is an independent community participation prototype and is not owned or operated by the City of Portland.</span>
+            <span>
+              {polity.productName} is an independent community participation prototype
+              and is not owned or operated by the City of Portland.
+            </span>
             <span>Built by OneTime Labs · 2026</span>
           </footer>
         </main>
