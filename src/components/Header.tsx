@@ -91,7 +91,7 @@ export default function Header({
           title={
             dataSource === "supabase"
               ? "Connected to live D3 Connect data"
-              : "Using sample data while D3 Connect is in prototype mode"
+              : "Supabase is not configured or unavailable; showing read-only demo fallback data"
           }
         >
           <span
@@ -101,7 +101,7 @@ export default function Header({
                 : "status-dot demo"
             }
           />
-          {dataSource === "supabase" ? "Live data" : "Demo data"}
+          {dataSource === "supabase" ? "Live data" : "Prototype data"}
         </div>
 
         <div className="citizen-pill">

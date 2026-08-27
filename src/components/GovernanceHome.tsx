@@ -8,20 +8,24 @@ import {
   Vote,
 } from "lucide-react";
 import { percent, polity } from "../config/polity";
-import type { Bill, CivicIssue, Proposal, Topic, ViewKey } from "../types";
+import type { Bill, CivicIssue, Proposal, ProxyAssignment, Topic, ViewKey } from "../types";
 
 interface Props {
   topics: Topic[];
   civicIssues: CivicIssue[];
   proposals: Proposal[];
   bills: Bill[];
+  proxyAssignments: ProxyAssignment[];
+  currentCitizenId: string;
   onNavigate: (view: ViewKey) => void;
 }
 
-export default function GovernanceHome({ topics, civicIssues, proposals, bills, onNavigate }: Props) {
+export default function GovernanceHome({ topics, civicIssues, proposals, bills, proxyAssignments, currentCitizenId, onNavigate }: Props) {
   const inForce = bills.filter((bill) => bill.state === "In Force").length;
   const openIssues = civicIssues.filter((issue) => issue.status === "Open" || issue.status === "In Discussion").length;
   const activeProposals = proposals.filter((proposal) => proposal.status !== "Converted to Bill").length;
+  const currentProxy = proxyAssignments.find((assignment) => assignment.owner_id === currentCitizenId && assignment.active);
+  const proxyState = currentProxy?.status === "accepted" ? "Active" : currentProxy?.status === "pending" ? "Pending" : "Mine";
 
   return (
     <div className="governance-home">
@@ -32,11 +36,11 @@ export default function GovernanceHome({ topics, civicIssues, proposals, bills, 
           <h1>Help shape {polity.districtShortName}.</h1>
           <p>
             See problems your neighbors have raised, suggest ways to fix them, support decisions you agree with,
-            or choose someone you trust to handle topics you do not have time to follow.
+            or give one person you trust your proxy when you want them to decide how to use your delegated vote.
           </p>
           <div className="hero-actions">
             <button className="primary-button bright" onClick={() => onNavigate("civic-issues")}>See What Needs Attention <ArrowRight size={16} /></button>
-            <button className="ghost-button" onClick={() => onNavigate("proxy")}>Choose Someone I Trust</button>
+            <button className="ghost-button" onClick={() => onNavigate("proxy")}>Manage My Proxy</button>
           </div>
         </div>
 
@@ -53,10 +57,10 @@ export default function GovernanceHome({ topics, civicIssues, proposals, bills, 
 
       {/* GOVERNANCE HOME 002 — Live civic snapshot */}
       <section className="governance-stat-grid">
-        <article><Scale size={22}/><span>Issues being discussed</span><strong>{openIssues}</strong><small>Problems and ideas that still need attention</small></article>
-        <article><GitFork size={22}/><span>Solutions being worked on</span><strong>{activeProposals}</strong><small>Community ideas that can still be improved</small></article>
-        <article><Vote size={22}/><span>Active decisions</span><strong>{inForce}</strong><small>Policies that currently have enough support</small></article>
-        <article><Network size={22}/><span>Topics you can manage</span><strong>{topics.length}</strong><small>Handle them yourself or choose someone you trust</small></article>
+        <button type="button" onClick={() => onNavigate("civic-issues")}><Scale size={22}/><span>Issues being discussed</span><strong>{openIssues}</strong><small>Problems and ideas that still need attention</small><em>View issues <ArrowRight size={13}/></em></button>
+        <button type="button" onClick={() => onNavigate("proposals")}><GitFork size={22}/><span>Suggested solutions</span><strong>{activeProposals}</strong><small>Community ideas with implementation detail</small><em>View solutions <ArrowRight size={13}/></em></button>
+        <button type="button" onClick={() => onNavigate("bills")}><Vote size={22}/><span>Active decisions</span><strong>{inForce}</strong><small>Policies that currently have enough support</small><em>View decisions <ArrowRight size={13}/></em></button>
+        <button type="button" onClick={() => onNavigate("proxy")}><Network size={22}/><span>My proxy</span><strong>{proxyState}</strong><small>One person, all proposals, consent required</small><em>Manage proxy <ArrowRight size={13}/></em></button>
       </section>
 
       {/* GOVERNANCE HOME 003 — Simple participation choices */}
@@ -65,9 +69,9 @@ export default function GovernanceHome({ topics, civicIssues, proposals, bills, 
           <div><span className="eyebrow">HOW D3 CONNECT WORKS</span><h2>You do not have to follow everything to have a voice.</h2></div>
         </div>
         <div className="principle-grid">
-          <article><UserRoundCog size={27}/><h3>Handle the topics you care about</h3><p>Follow issues and support decisions directly when a subject matters to you.</p></article>
-          <article><Network size={27}/><h3>Let someone you trust help</h3><p>For topics you do not follow, choose another community member you trust to handle them for you.</p></article>
-          <article><ShieldCheck size={27}/><h3>Change your mind anytime</h3><p>You can take a topic back, choose someone else, support a decision, or remove your support whenever you want.</p></article>
+          <article><UserRoundCog size={27}/><h3>Keep your vote or delegate it</h3><p>You can keep voting for yourself, or give one trusted person your general proxy.</p></article>
+          <article><Network size={27}/><h3>The proxy holder decides proposal by proposal</h3><p>There are no subject categories. If the proxy is accepted, the holder decides how to use that delegated vote on each proposal.</p></article>
+          <article><ShieldCheck size={27}/><h3>Consent is required on both sides</h3><p>The person you choose may accept or refuse your proxy. You can take an accepted proxy back at any time.</p></article>
         </div>
       </section>
 

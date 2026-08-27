@@ -52,8 +52,9 @@ function AboutView() {
         <article className="data-card">
           <h3>3. Choose how involved you want to be</h3>
           <p>
-            You can follow and support decisions yourself, or choose someone you trust
-            to handle certain topics for you. You can always change your choice later.
+            You can keep your vote and participate directly, or give one person you trust
+            your general proxy. The other person must accept it before your vote transfers,
+            and either side can end the proxy relationship later.
           </p>
         </article>
       </div>

@@ -7,6 +7,7 @@ import {
   Network,
   Scale,
   UserRoundCog,
+  ShieldCheck,
 } from "lucide-react";
 import { polity } from "../config/polity";
 import type { ViewKey } from "../types";
@@ -43,6 +44,12 @@ export default function Sidebar({ activeView, onNavigate }: Props) {
         ))}
       </nav>
 
+      <div className="nav-section-label admin-nav-label-side">ADMINISTRATION</div>
+      <nav className="side-nav" aria-label="Administration navigation">
+        <button className={activeView === "admin" ? "nav-item active" : "nav-item"} onClick={() => onNavigate("admin")}>
+          <ShieldCheck size={18} strokeWidth={1.9}/><span>Admin</span>
+        </button>
+      </nav>
 
       <div className="side-card">
         <CircleHelp size={22}/><strong>Not sure where to start?</strong>

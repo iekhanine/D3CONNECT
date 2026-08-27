@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import AdminView from "./components/AdminView";
 import GovernanceHome from "./components/GovernanceHome";
 import GovernanceViews from "./components/GovernanceViews";
 import Header from "./components/Header";
@@ -11,6 +12,7 @@ import {
   createProposal,
   loadGovernanceData,
   removeProxyAssignment,
+  respondToProxyAssignment,
   saveProxyAssignment,
   toggleBillSupport,
 } from "./lib/governanceService";
@@ -21,7 +23,7 @@ import type {
   Neighborhood,
   Proposal,
   ProxyAssignment,
-  ProxyDisposition,
+  ProxyStatus,
   Topic,
   ViewKey,
 } from "./types";
@@ -35,6 +37,7 @@ const VIEW_ROUTES: Partial<Record<ViewKey, string>> = {
   bills: "decisions",
   proxy: "people-i-trust",
   delegation: "where-my-voice-goes",
+  admin: "admin",
 };
 
 const ROUTE_VIEWS = Object.entries(VIEW_ROUTES).reduce<Record<string, ViewKey>>(
@@ -172,18 +175,21 @@ export default function App() {
     neighborhood?: string | null;
     location_detail?: string | null;
   }) {
-    const created = await createCivicIssue({
-      ...input,
-      created_by: currentCitizenId,
-    });
+    try {
+      const created = await createCivicIssue({
+        ...input,
+        created_by: currentCitizenId,
+      });
 
-    // Show it immediately, then reconcile against the database.
-    setCivicIssues((current) => [
-      created,
-      ...current.filter((issue) => issue.id !== created.id),
-    ]);
+      setCivicIssues((current) => [
+        created,
+        ...current.filter((issue) => issue.id !== created.id),
+      ]);
 
-    await refreshGovernanceState();
+      await refreshGovernanceState();
+    } catch (error) {
+      throw error instanceof Error ? error : new Error("The issue could not be saved.");
+    }
   }
 
   async function handleCreateProposal(input: {
@@ -192,84 +198,100 @@ export default function App() {
     body: string;
     issue_ids: string[];
   }) {
-    const created = await createProposal({
-      ...input,
-      maintainer_id: currentCitizenId,
-      parent_proposal_id: null,
-    });
+    try {
+      const created = await createProposal({
+        ...input,
+        maintainer_id: currentCitizenId,
+        parent_proposal_id: null,
+      });
 
-    setProposals((current) => [created, ...current]);
-    setCivicIssues((current) =>
-      current.map((issue) =>
-        input.issue_ids.includes(issue.id)
-          ? { ...issue, proposal_count: issue.proposal_count + 1 }
-          : issue,
-      ),
-    );
+      setProposals((current) => [created, ...current.filter((proposal) => proposal.id !== created.id)]);
+      await refreshGovernanceState();
+    } catch (error) {
+      throw error instanceof Error ? error : new Error("The solution could not be saved.");
+    }
   }
 
   async function handleToggleBillSupport(billId: string, support: boolean) {
     const bill = bills.find((candidate) => candidate.id === billId);
     if (!bill) return;
 
-    const updated = await toggleBillSupport(
-      bill,
-      currentCitizenId,
-      support,
-    );
+    try {
+      const updated = await toggleBillSupport(
+        bill,
+        currentCitizenId,
+        support,
+      );
 
-    setBills((current) =>
-      current.map((candidate) =>
-        candidate.id === billId ? updated : candidate,
-      ),
-    );
+      setBills((current) =>
+        current.map((candidate) =>
+          candidate.id === billId ? updated : candidate,
+        ),
+      );
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "The vote could not be saved.");
+    }
   }
 
-  async function handleSaveProxy(
-    topicId: string,
-    proxyId: string,
-    disposition: ProxyDisposition,
+  async function handleSaveProxy(proxyId: string) {
+    try {
+      const saved = await saveProxyAssignment({
+        owner_id: currentCitizenId,
+        proxy_id: proxyId,
+      });
+
+      setProxyAssignments((current) => [
+        ...current.map((assignment) =>
+          assignment.owner_id === currentCitizenId && assignment.active
+            ? { ...assignment, active: false }
+            : assignment,
+        ),
+        saved,
+      ]);
+      await refreshGovernanceState();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "The proxy request could not be saved.");
+    }
+  }
+
+  async function handleRemoveProxy(ownerId = currentCitizenId) {
+    try {
+      await removeProxyAssignment(ownerId);
+      await refreshGovernanceState();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "The proxy could not be returned or withdrawn.");
+    }
+  }
+
+  async function handleRespondProxy(
+    assignmentId: string,
+    status: Exclude<ProxyStatus, "pending">,
   ) {
-    const saved = await saveProxyAssignment({
-      owner_id: currentCitizenId,
-      proxy_id: proxyId,
-      topic_id: topicId,
-      disposition,
-    });
+    try {
+      const updated = await respondToProxyAssignment(
+        assignmentId,
+        currentCitizenId,
+        status,
+      );
 
-    setProxyAssignments((current) => [
-      ...current.filter(
-        (assignment) =>
-          !(
-            assignment.owner_id === currentCitizenId &&
-            assignment.topic_id === topicId
-          ),
-      ),
-      saved,
-    ]);
-  }
-
-  async function handleRemoveProxy(topicId: string) {
-    await removeProxyAssignment(currentCitizenId, topicId);
-
-    setProxyAssignments((current) =>
-      current.filter(
-        (assignment) =>
-          !(
-            assignment.owner_id === currentCitizenId &&
-            assignment.topic_id === topicId
-          ),
-      ),
-    );
+      if (!updated) return;
+      await refreshGovernanceState();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "The proxy response could not be saved.");
+    }
   }
 
   async function handleSubscribe(event: React.FormEvent) {
     event.preventDefault();
     if (!email.trim()) return;
 
-    await subscribe(email.trim(), selectedNeighborhood);
-    setSubscribed(true);
-    setEmail("");
+    try {
+      await subscribe(email.trim(), selectedNeighborhood);
+      setSubscribed(true);
+      setEmail("");
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Subscription failed.");
+    }
   }
 
   const isGovernanceView = [
@@ -293,18 +315,31 @@ export default function App() {
           citizen={currentCitizen}
         />
 
-        <main className="content-area">
+        <main className={`content-area${activeView === "admin" ? " content-area-admin" : ""}`}>
           {loading ? (
             <div className="loading-state">
               <div className="spinner" />
               <span>Loading {polity.productName}…</span>
             </div>
+          ) : activeView === "admin" ? (
+            <AdminView
+              topics={topics}
+              neighborhoods={neighborhoods}
+              citizens={citizens}
+              civicIssues={civicIssues}
+              proposals={proposals}
+              bills={bills}
+              onChanged={refreshGovernanceState}
+              onNavigate={navigate}
+            />
           ) : activeView === "home" ? (
             <GovernanceHome
               topics={topics}
               civicIssues={civicIssues}
               proposals={proposals}
               bills={bills}
+              proxyAssignments={proxyAssignments}
+              currentCitizenId={currentCitizenId}
               onNavigate={navigate}
             />
           ) : isGovernanceView ? (
@@ -323,6 +358,7 @@ export default function App() {
               onToggleBillSupport={handleToggleBillSupport}
               onSaveProxy={handleSaveProxy}
               onRemoveProxy={handleRemoveProxy}
+              onRespondProxy={handleRespondProxy}
               onNavigate={navigate}
             />
           ) : (
@@ -330,7 +366,7 @@ export default function App() {
           )}
         </main>
 
-        <div className="footer-dock">
+        {activeView !== "admin" && <div className="footer-dock">
           <div className="footer-dock-inner">
             <section className="newsletter">
               <div>
@@ -366,7 +402,7 @@ export default function App() {
               <span>Built by OneTime Labs · 2026</span>
             </footer>
           </div>
-        </div>
+        </div>}
       </div>
     </div>
   );

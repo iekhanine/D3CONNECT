@@ -1,5 +1,11 @@
 import { polity } from "../config/polity";
-import { businesses as demoBusinesses, events as demoEvents, neighborhoods as demoNeighborhoods, projects as demoProjects, resources as demoResources } from "../data/demo";
+import {
+  businesses as demoBusinesses,
+  events as demoEvents,
+  neighborhoods as demoNeighborhoods,
+  projects as demoProjects,
+  resources as demoResources,
+} from "../data/demo";
 import type { Business, CommunityEvent, Neighborhood, Project, Resource } from "../types";
 import { supabase } from "./supabase";
 
@@ -13,17 +19,46 @@ export interface DashboardData {
 }
 
 // ==========================================================
-// DATA SERVICE 001 — Community data scoped to active polity
+// DATA SERVICE 001 — Shared Supabase helpers
+// ==========================================================
+
+function requireSupabase() {
+  if (!supabase) {
+    throw new Error(
+      "Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY to .env.local.",
+    );
+  }
+  return supabase;
+}
+
+async function getPolityId(): Promise<string> {
+  const client = requireSupabase();
+  const { data, error } = await client.from("polities").select("id").eq("slug", polity.slug).maybeSingle();
+  if (error) throw new Error(`Could not resolve ${polity.districtShortName}: ${error.message}`);
+  if (!data?.id) throw new Error(`No Supabase polity exists for slug “${polity.slug}”.`);
+  return String(data.id);
+}
+
+function demoData(): DashboardData {
+  return {
+    projects: structuredClone(demoProjects),
+    resources: structuredClone(demoResources),
+    events: structuredClone(demoEvents),
+    businesses: structuredClone(demoBusinesses),
+    neighborhoods: structuredClone(demoNeighborhoods),
+    source: "demo",
+  };
+}
+
+// ==========================================================
+// DATA SERVICE 002 — Community data scoped to active polity
 // ==========================================================
 
 export async function loadDashboardData(): Promise<DashboardData> {
   if (!supabase) return demoData();
 
   try {
-    const polityRes = await supabase.from("polities").select("id").eq("slug", polity.slug).maybeSingle();
-    if (polityRes.error || !polityRes.data?.id) return demoData();
-    const polityId = polityRes.data.id as string;
-
+    const polityId = await getPolityId();
     const [projectsRes, resourcesRes, eventsRes, businessesRes, neighborhoodsRes] = await Promise.all([
       supabase.from("projects").select("*").eq("polity_id", polityId).order("created_at", { ascending: false }),
       supabase.from("resources").select("*").eq("polity_id", polityId).order("title"),
@@ -32,8 +67,8 @@ export async function loadDashboardData(): Promise<DashboardData> {
       supabase.from("neighborhoods").select("*").eq("polity_id", polityId).order("name"),
     ]);
 
-    const results = [projectsRes, resourcesRes, eventsRes, businessesRes, neighborhoodsRes];
-    if (results.some((result) => result.error)) return demoData();
+    const failed = [projectsRes, resourcesRes, eventsRes, businessesRes, neighborhoodsRes].find((result) => result.error);
+    if (failed?.error) throw new Error(failed.error.message);
 
     return {
       projects: (projectsRes.data ?? []) as Project[],
@@ -43,45 +78,49 @@ export async function loadDashboardData(): Promise<DashboardData> {
       neighborhoods: (neighborhoodsRes.data ?? []) as Neighborhood[],
       source: "supabase",
     };
-  } catch {
+  } catch (error) {
+    console.error("D3 Connect: Supabase community load failed; using read-only demo data.", error);
     return demoData();
   }
 }
 
-function demoData(): DashboardData {
-  return { projects: demoProjects, resources: demoResources, events: demoEvents, businesses: demoBusinesses, neighborhoods: demoNeighborhoods, source: "demo" };
-}
-
 // ==========================================================
-// DATA SERVICE 002 — Legacy community submission helpers
+// DATA SERVICE 003 — Community submissions
+// These no longer silently report success when Supabase fails.
 // ==========================================================
 
-export async function submitIssue(payload: { category: string; description: string; neighborhood: string; location: string; email?: string }) {
-  if (!supabase) return { ok: true, demo: true };
-  try {
-    const polityRes = await supabase.from("polities").select("id").eq("slug", polity.slug).maybeSingle();
-    if (!polityRes.data?.id) return { ok: true, demo: true };
-    const { error } = await supabase.from("issues").insert({ ...payload, polity_id: polityRes.data.id });
-    return { ok: true, demo: Boolean(error) };
-  } catch { return { ok: true, demo: true }; }
+export async function submitIssue(payload: {
+  category: string;
+  description: string;
+  neighborhood: string;
+  location: string;
+  email?: string;
+}) {
+  const client = requireSupabase();
+  const polityId = await getPolityId();
+  const { error } = await client.from("issues").insert({ ...payload, polity_id: polityId });
+  if (error) throw new Error(`Issue submission failed: ${error.message}`);
+  return { ok: true };
 }
 
-export async function submitFeedback(payload: { message: string; neighborhood: string; email?: string }) {
-  if (!supabase) return { ok: true, demo: true };
-  try {
-    const polityRes = await supabase.from("polities").select("id").eq("slug", polity.slug).maybeSingle();
-    if (!polityRes.data?.id) return { ok: true, demo: true };
-    const { error } = await supabase.from("feedback").insert({ ...payload, polity_id: polityRes.data.id });
-    return { ok: true, demo: Boolean(error) };
-  } catch { return { ok: true, demo: true }; }
+export async function submitFeedback(payload: {
+  message: string;
+  neighborhood: string;
+  email?: string;
+}) {
+  const client = requireSupabase();
+  const polityId = await getPolityId();
+  const { error } = await client.from("feedback").insert({ ...payload, polity_id: polityId });
+  if (error) throw new Error(`Feedback submission failed: ${error.message}`);
+  return { ok: true };
 }
 
 export async function subscribe(email: string, neighborhood: string) {
-  if (!supabase) return { ok: true, demo: true };
-  try {
-    const polityRes = await supabase.from("polities").select("id").eq("slug", polity.slug).maybeSingle();
-    if (!polityRes.data?.id) return { ok: true, demo: true };
-    const { error } = await supabase.from("subscribers").upsert({ email, neighborhood, polity_id: polityRes.data.id }, { onConflict: "polity_id,email" });
-    return { ok: true, demo: Boolean(error) };
-  } catch { return { ok: true, demo: true }; }
+  const client = requireSupabase();
+  const polityId = await getPolityId();
+  const { error } = await client
+    .from("subscribers")
+    .upsert({ email, neighborhood, polity_id: polityId }, { onConflict: "polity_id,email" });
+  if (error) throw new Error(`Subscription failed: ${error.message}`);
+  return { ok: true };
 }

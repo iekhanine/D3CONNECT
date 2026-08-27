@@ -14,7 +14,8 @@ export type ViewKey =
   | "calendar"
   | "businesses"
   | "feedback"
-  | "about";
+  | "about"
+  | "admin";
 
 export type ProjectStatus = "In Progress" | "Planned" | "Permitting" | "Scheduled" | "Design" | "Complete";
 
@@ -119,6 +120,7 @@ export interface CivicIssue {
   created_by: string;
   title: string;
   summary: string;
+  details?: string | null;
   topic_id: string;
   neighborhood?: string | null;
   location_detail?: string | null;
@@ -136,6 +138,12 @@ export interface Proposal {
   title: string;
   summary: string;
   body: string;
+  implementation_plan?: string | null;
+  funding_plan?: string | null;
+  estimated_cost?: string | null;
+  timeline?: string | null;
+  lead_entity?: string | null;
+  success_metrics?: string | null;
   status: ProposalStatus;
   issue_ids: string[];
   parent_proposal_id?: string | null;
@@ -163,27 +171,17 @@ export interface Bill {
   current_user_supports?: boolean;
 }
 
-export type ProxyDisposition = "return" | "redelegate";
+export type ProxyStatus = "pending" | "accepted" | "declined";
 
 export interface ProxyAssignment {
   id: string;
   polity_id?: string;
   owner_id: string;
   proxy_id: string;
-  topic_id?: string | null;
-  disposition: ProxyDisposition;
+  status: ProxyStatus;
   active: boolean;
   created_at: string;
-}
-
-export interface ProxyRoute {
-  topic_id: string;
-  topic_name: string;
-  direct: boolean;
-  proxy_id?: string;
-  proxy_name?: string;
-  disposition?: ProxyDisposition;
-  downstream_proxy_name?: string | null;
+  responded_at?: string | null;
 }
 
 export interface GovernanceData {

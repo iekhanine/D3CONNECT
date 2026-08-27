@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { percent, polity } from "../config/polity";
+import GovernanceDetailModal from "./GovernanceDetailModal";
 import type {
   Bill,
   Citizen,
@@ -23,7 +24,7 @@ import type {
   Neighborhood,
   Proposal,
   ProxyAssignment,
-  ProxyDisposition,
+  ProxyStatus,
   Topic,
   ViewKey,
 } from "../types";
@@ -41,8 +42,9 @@ interface Props {
   onCreateIssue: (input: { title: string; summary: string; topic_id: string; neighborhood?: string | null; location_detail?: string | null }) => Promise<void>;
   onCreateProposal: (input: { title: string; summary: string; body: string; issue_ids: string[] }) => Promise<void>;
   onToggleBillSupport: (billId: string, support: boolean) => Promise<void>;
-  onSaveProxy: (topicId: string, proxyId: string, disposition: ProxyDisposition) => Promise<void>;
-  onRemoveProxy: (topicId: string) => Promise<void>;
+  onSaveProxy: (proxyId: string) => Promise<void>;
+  onRemoveProxy: (ownerId?: string) => Promise<void>;
+  onRespondProxy: (assignmentId: string, status: Exclude<ProxyStatus, "pending">) => Promise<void>;
   onNavigate: (view: ViewKey) => void;
 }
 
@@ -189,7 +191,7 @@ function NeighborhoodScopePicker({
   );
 }
 
-function IssuesView({ civicIssues, topics, neighborhoods, citizens, onCreateIssue }: Props) {
+function IssuesView({ civicIssues, proposals, topics, neighborhoods, citizens, onCreateIssue }: Props) {
   const [query, setQuery] = useState("");
   const [creating, setCreating] = useState(false);
   const [title, setTitle] = useState("");
@@ -199,6 +201,8 @@ function IssuesView({ civicIssues, topics, neighborhoods, citizens, onCreateIssu
   const [locationDetail, setLocationDetail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
+  const [selectedIssue, setSelectedIssue] = useState<CivicIssue | null>(null);
+  const [selectedIssueProposal, setSelectedIssueProposal] = useState<Proposal | null>(null);
 
   // Topics are loaded asynchronously. The original prototype initialized
   // topicId while the list was still empty, leaving the controlled select
@@ -272,13 +276,16 @@ function IssuesView({ civicIssues, topics, neighborhoods, citizens, onCreateIssu
 
       <div className="governance-card-list">
         {visible.map((issue) => (
-          <article className="governance-card" key={issue.id}>
+          <button type="button" className="governance-card governance-card-button" key={issue.id} onClick={() => setSelectedIssue(issue)}>
             <div className="governance-card-meta"><span className="topic-pill">{topicName(issue.topic_id)}</span><span className={`issue-status issue-${issue.status.toLowerCase().replaceAll(" ", "-")}`}>{issue.status}</span></div>
             <h3>{issue.title}</h3><p>{issue.summary}</p>
             <div className="governance-card-footer"><span>Shared by {citizenName(issue.created_by)}</span><span>{issue.neighborhood || "District-Wide"}{issue.location_detail ? ` · ${issue.location_detail}` : ""}</span><strong>{issue.proposal_count} solution idea{issue.proposal_count === 1 ? "" : "s"}</strong></div>
-          </article>
+            <span className="card-open-hint">Open issue details <ChevronRight size={14}/></span>
+          </button>
         ))}
       </div>
+      <GovernanceDetailModal issue={selectedIssue} civicIssues={civicIssues} topics={topics} citizens={citizens} proposals={proposals} onOpenProposal={(proposal) => { setSelectedIssue(null); setSelectedIssueProposal(proposal); }} onClose={() => setSelectedIssue(null)}/>
+      <GovernanceDetailModal proposal={selectedIssueProposal} civicIssues={civicIssues} topics={topics} citizens={citizens} onClose={() => setSelectedIssueProposal(null)}/>
     </div>
   );
 }
@@ -290,19 +297,30 @@ function ProposalsView({ proposals, civicIssues, citizens, onCreateProposal }: P
   const [summary, setSummary] = useState("");
   const [body, setBody] = useState("");
   const [issueIds, setIssueIds] = useState<string[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+  const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
   const visible = proposals.filter((proposal) => `${proposal.title} ${proposal.summary}`.toLowerCase().includes(query.toLowerCase()));
   const citizenName = (id: string) => citizens.find((citizen) => citizen.id === id)?.display_name ?? "Community member";
 
   function toggleIssue(id: string) { setIssueIds((current) => current.includes(id) ? current.filter((x) => x !== id) : [...current, id]); }
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    await onCreateProposal({ title, summary, body, issue_ids: issueIds });
-    setTitle(""); setSummary(""); setBody(""); setIssueIds([]); setCreating(false);
+    setSubmitting(true);
+    setSubmitError("");
+    try {
+      await onCreateProposal({ title, summary, body, issue_ids: issueIds });
+      setTitle(""); setSummary(""); setBody(""); setIssueIds([]); setCreating(false);
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "The solution could not be saved. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
     <div className="page-view governance-view">
-      <PageTitle eyebrow="STEP 2 · SUGGESTED SOLUTIONS" title="How could this be fixed or improved?" text="If you have an idea for solving an issue, share it here. Other people can review it and improve it before it moves forward for community support." action={<button className="primary-button" onClick={() => setCreating(true)}><Plus size={16}/> Suggest a Solution</button>}/>
+      <PageTitle eyebrow="STEP 2 · SUGGESTED SOLUTIONS" title="How could this be fixed or improved?" text="If you have an idea for solving an issue, share it here. Other people can review it and improve it before it moves forward for community support." action={<button className="primary-button" onClick={() => { setSubmitError(""); setCreating(true); }}><Plus size={16}/> Suggest a Solution</button>}/>
       {creating && (
         <form className="governance-form panel" onSubmit={submit}>
           <div className="form-heading"><div><span className="eyebrow">SUGGEST A SOLUTION</span><h2>Share a way forward</h2></div><button type="button" className="icon-button" onClick={() => setCreating(false)}><X size={18}/></button></div>
@@ -311,14 +329,16 @@ function ProposalsView({ proposals, civicIssues, citizens, onCreateProposal }: P
             <label className="full">Quick summary<input required value={summary} onChange={(e)=>setSummary(e.target.value)} placeholder="Explain the idea in one sentence"/></label>
             <label className="full">How would it work?<textarea required rows={6} value={body} onChange={(e)=>setBody(e.target.value)} placeholder="Describe what should happen, who would be involved, and what result you want to see."/></label>
             <fieldset className="issue-selector full"><legend>Which issue does this help solve?</legend>{civicIssues.map((issue)=><label key={issue.id}><input type="checkbox" checked={issueIds.includes(issue.id)} onChange={()=>toggleIssue(issue.id)}/><span>{issue.title}</span></label>)}</fieldset>
-            <div className="form-actions full"><button type="button" className="secondary-button" onClick={() => setCreating(false)}>Cancel</button><button className="primary-button" disabled={!issueIds.length}>Share Solution</button></div>
+            {submitError && <div className="full form-error" role="alert">{submitError}</div>}
+            <div className="form-actions full"><button type="button" className="secondary-button" onClick={() => setCreating(false)} disabled={submitting}>Cancel</button><button className="primary-button" disabled={!issueIds.length || submitting}>{submitting ? "Saving…" : "Share Solution"}</button></div>
           </div>
         </form>
       )}
       <div className="toolbar-row"><label className="search-box"><Search size={18}/><input value={query} onChange={(e)=>setQuery(e.target.value)} placeholder="Search suggested solutions"/></label><div className="result-count">{visible.length} solutions</div></div>
       <div className="proposal-grid">
-        {visible.map((proposal)=><article className="proposal-card panel" key={proposal.id}><div className="governance-card-meta"><span className={`proposal-status proposal-${proposal.status.toLowerCase().replaceAll(" ", "-")}`}>{proposal.status}</span><span>{proposal.issue_ids.length} related issue{proposal.issue_ids.length===1?"":"s"}</span></div><h3>{proposal.title}</h3><p>{proposal.summary}</p><div className="proposal-code"><GitBranch size={15}/><span>{proposal.revision_count} updates</span><GitFork size={15}/><span>{proposal.fork_count} alternate versions</span></div><div className="governance-card-footer"><span>Started by {citizenName(proposal.maintainer_id)}</span><span>Updated {new Date(proposal.updated_at).toLocaleDateString()}</span></div></article>)}
+        {visible.map((proposal)=><button type="button" className="proposal-card proposal-card-button panel" key={proposal.id} onClick={() => setSelectedProposal(proposal)}><div className="governance-card-meta"><span className={`proposal-status proposal-${proposal.status.toLowerCase().replaceAll(" ", "-")}`}>{proposal.status}</span><span>{proposal.issue_ids.length} related issue{proposal.issue_ids.length===1?"":"s"}</span></div><h3>{proposal.title}</h3><p>{proposal.summary}</p><div className="proposal-code"><GitBranch size={15}/><span>{proposal.revision_count} updates</span><GitFork size={15}/><span>{proposal.fork_count} alternate versions</span></div><div className="proposal-preview-facts"><span><strong>{proposal.estimated_cost || "Cost TBD"}</strong><small>Estimated cost</small></span><span><strong>{proposal.timeline || "Timeline TBD"}</strong><small>Timeline</small></span></div><div className="governance-card-footer"><span>Started by {citizenName(proposal.maintainer_id)}</span><span>Updated {new Date(proposal.updated_at).toLocaleDateString()}</span></div><span className="card-open-hint">View implementation & funding <ChevronRight size={14}/></span></button>)}
       </div>
+      <GovernanceDetailModal proposal={selectedProposal} civicIssues={civicIssues} topics={[]} citizens={citizens} onClose={() => setSelectedProposal(null)}/>
     </div>
   );
 }
@@ -335,45 +355,223 @@ function BillsView({ bills, onToggleBillSupport }: Props) {
   );
 }
 
-function ProxyView({ topics, citizens, proxyAssignments, currentCitizenId, onSaveProxy, onRemoveProxy }: Props) {
-  const current = proxyAssignments.filter((proxy) => proxy.owner_id === currentCitizenId && proxy.active);
-  const [editingTopic, setEditingTopic] = useState<string | null>(null);
-  const [proxyId, setProxyId] = useState("");
-  const [disposition, setDisposition] = useState<ProxyDisposition>("return");
+function ProxyView({ citizens, proxyAssignments, currentCitizenId, onSaveProxy, onRemoveProxy, onRespondProxy }: Props) {
+  const outgoing = proxyAssignments.find(
+    (assignment) => assignment.owner_id === currentCitizenId && assignment.active,
+  );
+  const incoming = proxyAssignments.filter(
+    (assignment) => assignment.proxy_id === currentCitizenId && assignment.active,
+  );
+  const acceptedIncoming = incoming.filter((assignment) => assignment.status === "accepted");
+  const pendingIncoming = incoming.filter((assignment) => assignment.status === "pending");
   const eligibleCitizens = citizens.filter((citizen) => citizen.id !== currentCitizenId);
-  const citizenName = (id?: string) => citizens.find((citizen)=>citizen.id===id)?.display_name ?? "Unknown";
+  const [editing, setEditing] = useState(false);
+  const [proxyId, setProxyId] = useState("");
+  const citizen = (id?: string) => citizens.find((candidate) => candidate.id === id);
+  const citizenName = (id?: string) => citizen(id)?.display_name ?? "Unknown";
 
-  async function save(topicId: string) {
+  async function save() {
     if (!proxyId) return;
-    await onSaveProxy(topicId, proxyId, disposition);
-    setEditingTopic(null); setProxyId(""); setDisposition("return");
+    await onSaveProxy(proxyId);
+    setProxyId("");
+    setEditing(false);
   }
+
+  function beginEditing() {
+    setProxyId(outgoing?.proxy_id ?? "");
+    setEditing(true);
+  }
+
+  const outgoingHeadline = !outgoing
+    ? "You currently hold your own vote"
+    : outgoing.status === "accepted"
+      ? `${citizenName(outgoing.proxy_id)} holds your proxy`
+      : outgoing.status === "pending"
+        ? `Waiting for ${citizenName(outgoing.proxy_id)} to accept`
+        : `${citizenName(outgoing.proxy_id)} refused your proxy`;
+
+  const outgoingDetail = !outgoing
+    ? "If you choose a proxy holder, they will decide how to use your delegated vote on each proposal."
+    : outgoing.status === "accepted"
+      ? "Your general proxy is active. You can take it back at any time."
+      : outgoing.status === "pending"
+        ? "Your proxy has not transferred. You retain your vote until the other person accepts."
+        : "Your proxy never transferred. You still hold your own vote and may choose someone else.";
 
   return (
     <div className="page-view governance-view">
-      <PageTitle eyebrow="PEOPLE I TRUST" title="Let someone you trust handle topics you do not follow" text="You can always handle a topic yourself. If you do not have the time or interest to follow one closely, choose another community member you trust to handle it for you. You can change or undo this anytime."/>
-      <div className="proxy-summary panel"><UserRoundCog size={30}/><div><strong>{topics.length-current.length} topics you handle</strong><span>{current.length} handled by someone you trust</span></div><p>You stay in control. Taking a topic back means you will handle future decisions on that topic yourself.</p></div>
-      <div className="proxy-topic-list">
-        {topics.map((topic)=>{const assignment=current.find((proxy)=>proxy.topic_id===topic.id);const isEditing=editingTopic===topic.id;return <article className="proxy-topic-card panel" key={topic.id}><div className="proxy-topic-main"><div className="topic-icon"><Network size={19}/></div><div><span className="eyebrow">{assignment?"HANDLED BY SOMEONE I TRUST":"I HANDLE THIS"}</span><h3>{topic.name}</h3><p>{topic.description}</p></div></div>{assignment&&!isEditing?<div className="proxy-current"><div><small>Your trusted person</small><strong>{citizenName(assignment.proxy_id)}</strong><span>{assignment.disposition==="redelegate"?"Can choose another trusted person if needed":"Sends unresolved decisions back to you"}</span></div><div className="proxy-buttons"><button className="secondary-button" onClick={()=>{setEditingTopic(topic.id);setProxyId(assignment.proxy_id);setDisposition(assignment.disposition)}}>Change</button><button className="text-button danger" onClick={()=>onRemoveProxy(topic.id)}>Take Back</button></div></div>:!assignment&&!isEditing?<button className="secondary-button" onClick={()=>setEditingTopic(topic.id)}>Choose Someone</button>:<div className="proxy-editor"><label>Who do you trust with this topic?<select value={proxyId} onChange={(e)=>setProxyId(e.target.value)}><option value="">Choose a community member</option>{eligibleCitizens.map((citizen)=><option value={citizen.id} key={citizen.id}>{citizen.display_name} · {citizen.neighborhood}</option>)}</select></label><label>If they cannot make a decision<select value={disposition} onChange={(e)=>setDisposition(e.target.value as ProxyDisposition)}><option value="return">Send it back to me</option><option value="redelegate">Let them choose another trusted person</option></select></label><div className="proxy-buttons"><button className="secondary-button" onClick={()=>setEditingTopic(null)}>Cancel</button><button className="primary-button" onClick={()=>save(topic.id)} disabled={!proxyId}><Check size={15}/> Save Choice</button></div></div>}</article>})}
+      <PageTitle
+        eyebrow="PEOPLE I TRUST"
+        title="Give one person your proxy"
+        text="A proxy is general, not topic-by-topic. If you give someone your proxy, that person decides how to use your delegated vote on each proposal. The proxy does not take effect unless they explicitly accept it."
+      />
+
+      <div className="proxy-summary panel">
+        <UserRoundCog size={30}/>
+        <div>
+          <strong>{outgoingHeadline}</strong>
+          <span>{acceptedIncoming.length} accepted prox{acceptedIncoming.length === 1 ? "y" : "ies"} currently entrusted to you</span>
+        </div>
+        <p>{outgoingDetail}</p>
+      </div>
+
+      <div className="proxy-general-grid">
+        <section className="panel proxy-general-card">
+          <div className="proxy-section-heading">
+            <div>
+              <span className="eyebrow">MY PROXY</span>
+              <h2>Who speaks with my delegated vote?</h2>
+              <p>There are no subject categories. One accepted proxy relationship applies across community decisions until you take it back.</p>
+            </div>
+          </div>
+
+          {editing ? (
+            <div className="proxy-general-editor">
+              <label>
+                Choose the person you trust
+                <select value={proxyId} onChange={(event) => setProxyId(event.target.value)}>
+                  <option value="">Choose a community member</option>
+                  {eligibleCitizens.map((candidate) => (
+                    <option value={candidate.id} key={candidate.id}>
+                      {candidate.display_name} · {candidate.neighborhood}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="proxy-consent-note">
+                <ShieldCheck size={18}/>
+                <div>
+                  <strong>This sends a request, not an automatic transfer.</strong>
+                  <span>The person must accept the proxy before your voting authority moves to them.</span>
+                </div>
+              </div>
+              <div className="proxy-buttons">
+                <button type="button" className="secondary-button" onClick={() => { setEditing(false); setProxyId(""); }}>Cancel</button>
+                <button type="button" className="primary-button" onClick={save} disabled={!proxyId}><Check size={15}/> Send Proxy Request</button>
+              </div>
+            </div>
+          ) : outgoing ? (
+            <div className="proxy-relationship">
+              <div className="proxy-person-block">
+                <span className={`proxy-status proxy-status-${outgoing.status}`}>
+                  {outgoing.status === "accepted" ? "Accepted" : outgoing.status === "pending" ? "Awaiting consent" : "Refused"}
+                </span>
+                <strong>{citizenName(outgoing.proxy_id)}</strong>
+                <small>{citizen(outgoing.proxy_id)?.neighborhood ?? "Community member"}</small>
+                <p>{outgoingDetail}</p>
+              </div>
+              <div className="proxy-buttons">
+                <button type="button" className="secondary-button" onClick={beginEditing}>{outgoing.status === "declined" ? "Choose Someone Else" : "Change Person"}</button>
+                <button type="button" className="text-button danger" onClick={() => onRemoveProxy(currentCitizenId)}>{outgoing.status === "accepted" ? "Take Back Proxy" : "Cancel Request"}</button>
+              </div>
+            </div>
+          ) : (
+            <div className="proxy-empty-state">
+              <ShieldCheck size={24}/>
+              <div><strong>You are voting for yourself.</strong><p>No one else currently holds your proxy.</p></div>
+              <button type="button" className="primary-button" onClick={beginEditing}>Choose a Proxy Holder</button>
+            </div>
+          )}
+        </section>
+
+        <section className="panel proxy-incoming-card">
+          <div className="proxy-section-heading">
+            <div>
+              <span className="eyebrow">PROXIES OFFERED TO ME</span>
+              <h2>I decide whether to accept them</h2>
+              <p>Nobody can make you carry their proxy. Pending requests require an explicit choice, and an accepted proxy can be returned later.</p>
+            </div>
+            {pendingIncoming.length > 0 && <span className="proxy-request-count">{pendingIncoming.length} pending</span>}
+          </div>
+
+          <div className="proxy-request-list">
+            {incoming.length === 0 ? (
+              <div className="proxy-empty-inline">You do not currently have any proxy requests.</div>
+            ) : incoming.map((assignment) => {
+              const owner = citizen(assignment.owner_id);
+              return (
+                <article className="proxy-request" key={assignment.id}>
+                  <div>
+                    <span className={`proxy-status proxy-status-${assignment.status}`}>
+                      {assignment.status === "accepted" ? "Accepted" : assignment.status === "pending" ? "Needs your consent" : "Refused"}
+                    </span>
+                    <strong>{owner?.display_name ?? "Community member"}</strong>
+                    <small>{owner?.neighborhood ?? "District 3"}</small>
+                    <p>
+                      {assignment.status === "pending"
+                        ? "They want to entrust you with their general proxy. Nothing transfers unless you accept."
+                        : assignment.status === "accepted"
+                          ? "You currently carry this person's delegated vote and decide how to use it on proposals."
+                          : "You refused this proxy. Their voting authority stayed with them."}
+                    </p>
+                  </div>
+                  <div className="proxy-buttons">
+                    {assignment.status === "pending" && <>
+                      <button type="button" className="secondary-button" onClick={() => onRespondProxy(assignment.id, "declined")}><X size={15}/> Refuse Proxy</button>
+                      <button type="button" className="primary-button" onClick={() => onRespondProxy(assignment.id, "accepted")}><Check size={15}/> Accept Proxy</button>
+                    </>}
+                    {assignment.status === "accepted" && (
+                      <button type="button" className="secondary-button" onClick={() => onRemoveProxy(assignment.owner_id)}>Return Proxy</button>
+                    )}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </section>
       </div>
     </div>
   );
 }
 
-function DelegationView({ topics, citizens, proxyAssignments, currentCitizenId }: Props) {
-  const citizenName = (id?: string) => citizens.find((citizen)=>citizen.id===id)?.display_name ?? "Unknown";
-  const myAssignments = proxyAssignments.filter((assignment)=>assignment.owner_id===currentCitizenId&&assignment.active);
+function DelegationView({ citizens, proxyAssignments, currentCitizenId }: Props) {
+  const outgoing = proxyAssignments.find(
+    (assignment) => assignment.owner_id === currentCitizenId && assignment.active,
+  );
+  const acceptedIncoming = proxyAssignments.filter(
+    (assignment) => assignment.proxy_id === currentCitizenId && assignment.active && assignment.status === "accepted",
+  );
+  const citizenName = (id?: string) => citizens.find((candidate) => candidate.id === id)?.display_name ?? "Unknown";
 
   return (
     <div className="page-view governance-view">
-      <PageTitle eyebrow="WHERE MY VOICE GOES" title="See who is handling each topic for you" text="This shows, topic by topic, whether you are handling decisions yourself or someone you trust is handling them for you. If they are allowed to pass the topic to another trusted person, you will see that too."/>
-      <div className="delegation-network panel">
-        <div className="network-person you"><Users size={21}/><strong>You</strong><small>Your voice starts here</small></div>
-        <div className="network-routes">
-          {topics.map((topic)=>{const first=myAssignments.find((a)=>a.topic_id===topic.id);const downstream=first?.disposition==="redelegate"?proxyAssignments.find((a)=>a.owner_id===first.proxy_id&&a.topic_id===topic.id&&a.active):undefined;return <div className="network-route" key={topic.id}><div className="route-topic"><span>{topic.name}</span></div><ChevronRight size={16}/>{first?<><div className="network-person"><strong>{citizenName(first.proxy_id)}</strong><small>{first.disposition==="redelegate"?"Can pass it on":"Sends it back to you if needed"}</small></div>{downstream&&<><ChevronRight size={16}/><div className="network-person downstream"><strong>{citizenName(downstream.proxy_id)}</strong><small>Chosen by your trusted person</small></div></>}</>:<div className="network-person direct"><ShieldCheck size={16}/><strong>You handle this</strong><small>You decide for yourself</small></div>}</div>})}
-        </div>
+      <PageTitle
+        eyebrow="WHERE MY VOICE GOES"
+        title="See the current path of your proxy"
+        text="Your proxy is one general relationship, not a set of topic routes. An accepted proxy holder decides how to use your delegated vote on individual proposals until you take the proxy back."
+      />
+
+      <div className="delegation-network panel proxy-network-simple">
+        <div className="network-person you"><Users size={21}/><strong>You</strong><small>Your voting authority starts here</small></div>
+        <ChevronRight size={22}/>
+        {!outgoing ? (
+          <div className="network-person direct"><ShieldCheck size={16}/><strong>You keep your vote</strong><small>No active proxy request</small></div>
+        ) : outgoing.status === "accepted" ? (
+          <div className="network-person"><strong>{citizenName(outgoing.proxy_id)}</strong><small>Accepted your general proxy and decides how to use it on proposals</small></div>
+        ) : outgoing.status === "pending" ? (
+          <div className="network-person pending"><strong>{citizenName(outgoing.proxy_id)}</strong><small>Request pending · your vote remains with you until they accept</small></div>
+        ) : (
+          <div className="network-person direct"><ShieldCheck size={16}/><strong>You keep your vote</strong><small>{citizenName(outgoing.proxy_id)} refused the proxy request</small></div>
+        )}
       </div>
-      <section className="panel network-note"><h3>You are always in control of where your voice goes.</h3><p>If someone you trust cannot handle a decision, your settings determine whether it comes back to you or may be passed to another trusted person. You can change those settings anytime.</p></section>
+
+      <section className="panel network-note">
+        <h3>Consent works both ways.</h3>
+        <p>You can withdraw your proxy at any time. The person you choose can refuse it before accepting, and can return an accepted proxy later. Pending or refused requests never transfer your vote.</p>
+      </section>
+
+      <section className="panel proxy-held-summary">
+        <div>
+          <span className="eyebrow">PROXIES I CURRENTLY HOLD</span>
+          <h3>{acceptedIncoming.length === 0 ? "You are not carrying anyone else's proxy." : `You currently hold ${acceptedIncoming.length} additional prox${acceptedIncoming.length === 1 ? "y" : "ies"}.`}</h3>
+          <p>Each accepted proxy represents a separate person's delegated voting authority. You decide how to use each accepted proxy when community decisions come up.</p>
+        </div>
+        {acceptedIncoming.length > 0 && (
+          <div className="proxy-held-list">
+            {acceptedIncoming.map((assignment) => <span key={assignment.id}>{citizenName(assignment.owner_id)}</span>)}
+          </div>
+        )}
+      </section>
     </div>
   );
 }
