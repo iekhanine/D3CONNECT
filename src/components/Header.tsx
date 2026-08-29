@@ -1,25 +1,7 @@
-import {
-  useEffect,
-  useRef,
-  useState,
-} from "react";
-
-import {
-  Check,
-  ChevronDown,
-  MapPin,
-  UserRound,
-} from "lucide-react";
-
-import {
-  polity,
-} from "../config/polity";
-
-import type {
-  Citizen,
-  Neighborhood,
-} from "../types";
-
+import { Check, ChevronDown, MapPin, UserRound } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { polity } from "../config/polity";
+import type { Citizen, Neighborhood } from "../types";
 
 interface Props {
   neighborhoods: Neighborhood[];
@@ -28,7 +10,6 @@ interface Props {
   dataSource: "supabase" | "demo";
   citizen?: Citizen;
 }
-
 
 export default function Header({
   neighborhoods,
@@ -41,9 +22,7 @@ export default function Header({
   const neighborhoodRef = useRef<HTMLDivElement>(null);
 
   const selectedLabel =
-    selectedNeighborhood === "All"
-      ? "All neighborhoods"
-      : selectedNeighborhood;
+    selectedNeighborhood === "All" ? "All neighborhoods" : selectedNeighborhood;
 
   useEffect(() => {
     function handlePointerDown(event: PointerEvent) {
@@ -95,11 +74,7 @@ export default function Header({
           }
         >
           <span
-            className={
-              dataSource === "supabase"
-                ? "status-dot live"
-                : "status-dot demo"
-            }
+            className={dataSource === "supabase" ? "status-dot live" : "status-dot demo"}
           />
           {dataSource === "supabase" ? "Live data" : "Prototype data"}
         </div>
@@ -133,10 +108,7 @@ export default function Header({
               <strong>{selectedLabel}</strong>
             </span>
 
-            <ChevronDown
-              className="neighborhood-trigger-chevron"
-              size={18}
-            />
+            <ChevronDown className="neighborhood-trigger-chevron" size={18} />
           </button>
 
           {neighborhoodOpen && (
@@ -145,9 +117,7 @@ export default function Header({
               role="listbox"
               aria-label="Choose neighborhood"
             >
-              <div className="neighborhood-menu-heading">
-                Filter by neighborhood
-              </div>
+              <div className="neighborhood-menu-heading">Filter by neighborhood</div>
 
               <button
                 type="button"

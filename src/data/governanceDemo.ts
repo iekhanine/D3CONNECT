@@ -1,8 +1,6 @@
 import type { Bill, Citizen, CivicIssue, Proposal, ProxyAssignment, Topic } from "../types";
 
-// ==========================================================
-// GOVERNANCE DEMO 001 — Topics
-// ==========================================================
+// Topics
 
 export const demoTopics: Topic[] = [
   { id: "topic-transport", name: "Transportation", description: "Streets, transit, walking, cycling, traffic, and mobility." },
@@ -14,10 +12,7 @@ export const demoTopics: Topic[] = [
   { id: "topic-civic", name: "Civic Administration", description: "Elections, public process, transparency, and administration." },
 ];
 
-// ==========================================================
-// GOVERNANCE DEMO 002 — Citizens
-// Fictional prototype identities only.
-// ==========================================================
+// Citizens
 
 export const demoCitizens: Citizen[] = [
   { id: "citizen-you", display_name: "You (Demo Citizen)", neighborhood: "Richmond", bio: "Prototype participant", active: true },
@@ -29,9 +24,7 @@ export const demoCitizens: Citizen[] = [
   { id: "citizen-sam", display_name: "Sam Ellis", neighborhood: "Sunnyside", bio: "Community safety organizer", active: true },
 ];
 
-// ==========================================================
-// GOVERNANCE DEMO 003 — Issues
-// ==========================================================
+// Issues
 
 export const demoCivicIssues: CivicIssue[] = [
   { id: "ci-1", created_by: "citizen-maya", title: "Unsafe crossings along SE Division", summary: "Residents need safer pedestrian crossings at several high-use intersections along the corridor.", details: "Residents have reported long crossing distances, inconsistent visibility, and conflicts between turning vehicles and people walking near several transit stops. The issue is being discussed as a corridor problem rather than a request for a single intersection fix.", topic_id: "topic-transport", neighborhood: "Richmond", location_detail: "SE Division corridor", status: "Open", created_at: "2026-08-19T14:30:00Z", proposal_count: 1 },
@@ -40,9 +33,7 @@ export const demoCivicIssues: CivicIssue[] = [
   { id: "ci-4", created_by: "citizen-ruth", title: "Make district project spending easier to audit", summary: "Publish consistent project-level budget, funding source, change, and completion data for residents.", details: "Residents can find project information today, but it is spread across different systems and formats. The requested outcome is one consistent public view showing original budget, current budget, funding source, responsible agency, change history, and expected completion.", topic_id: "topic-budget", neighborhood: "District-wide", status: "Addressed", created_at: "2026-08-07T12:00:00Z", proposal_count: 1 },
 ];
 
-// ==========================================================
-// GOVERNANCE DEMO 004 — Proposals
-// ==========================================================
+// Proposals
 
 export const demoProposals: Proposal[] = [
   {
@@ -95,9 +86,7 @@ export const demoProposals: Proposal[] = [
   },
 ];
 
-// ==========================================================
-// GOVERNANCE DEMO 005 — Bills and continuously attached support
-// ==========================================================
+// Bills and continuously attached support
 
 export const demoBills: Bill[] = [
   { id: "bill-1", proposal_id: "prop-4", title: "Open Project Ledger Standard", summary: "Require consistent public project reporting for district-facing work.", kind: "Policy", state: "In Force", support_count: 5, electorate_count: 7, support_percent: 71.43, created_at: "2026-08-18T11:30:00Z", last_state_change_at: "2026-08-23T08:00:00Z", current_user_supports: true },
@@ -105,11 +94,7 @@ export const demoBills: Bill[] = [
   { id: "bill-3", proposal_id: "prop-2", title: "Housing Data Transparency Pilot", summary: "Operate a public district housing-stability data pilot for twelve months.", kind: "Policy", state: "Out of Force", support_count: 2, electorate_count: 7, support_percent: 28.57, created_at: "2026-07-21T13:00:00Z", last_state_change_at: "2026-08-20T13:00:00Z", current_user_supports: false },
 ];
 
-// ==========================================================
-// GOVERNANCE DEMO 006 — General proxy assignments
-// A proxy applies to the citizen's voting authority as a whole.
-// The proposed holder must explicitly accept before it transfers.
-// ==========================================================
+// General proxy assignments
 
 export const demoProxyAssignments: ProxyAssignment[] = [
   { id: "px-1", owner_id: "citizen-you", proxy_id: "citizen-devon", status: "pending", active: true, created_at: "2026-08-20T12:00:00Z" },

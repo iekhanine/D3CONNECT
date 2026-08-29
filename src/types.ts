@@ -1,79 +1,17 @@
-// ==========================================================
-// TYPES 001 — Shared D3 Connect / PosProx application types
-// ==========================================================
-
 export type ViewKey =
   | "home"
+  | "about"
   | "civic-issues"
   | "proposals"
   | "bills"
   | "proxy"
   | "delegation"
-  | "projects"
-  | "resources"
-  | "calendar"
-  | "businesses"
-  | "feedback"
-  | "about"
   | "admin";
-
-export type ProjectStatus = "In Progress" | "Planned" | "Permitting" | "Scheduled" | "Design" | "Complete";
 
 export interface Neighborhood {
   id: string;
   name: string;
 }
-
-export interface Project {
-  id: string;
-  name: string;
-  neighborhood: string;
-  agency: string;
-  budget: number;
-  status: ProjectStatus;
-  est_completion: string;
-  description?: string | null;
-}
-
-export interface Resource {
-  id: string;
-  category: string;
-  title: string;
-  description: string;
-  url?: string | null;
-  phone?: string | null;
-  neighborhood?: string | null;
-}
-
-export interface CommunityEvent {
-  id: string;
-  title: string;
-  event_date: string;
-  start_time: string;
-  end_time?: string | null;
-  location: string;
-  neighborhood?: string | null;
-}
-
-export interface Business {
-  id: string;
-  name: string;
-  category: string;
-  neighborhood: string;
-  address?: string | null;
-  website?: string | null;
-  description?: string | null;
-}
-
-export interface IssueCategory {
-  id: string;
-  label: string;
-  helper: string;
-}
-
-// ==========================================================
-// TYPES 002 — Reusable polity configuration
-// ==========================================================
 
 export interface PolityConfig {
   slug: string;
@@ -90,10 +28,6 @@ export interface PolityConfig {
   secretaryRoleName: string;
   demoCitizenId: string;
 }
-
-// ==========================================================
-// TYPES 003 — PosProx domain model
-// ==========================================================
 
 export interface Topic {
   id: string;

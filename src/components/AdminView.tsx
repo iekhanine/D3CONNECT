@@ -28,7 +28,7 @@ import {
   upsertCivicIssue,
   upsertProposal,
   upsertTopic,
-} from "../lib/governanceService";
+} from "../lib/governanceAdminService";
 import type {
   Bill,
   BillKind,

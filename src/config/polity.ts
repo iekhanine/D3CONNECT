@@ -1,11 +1,6 @@
 import type { PolityConfig } from "../types";
 
-// ==========================================================
-// POLITY 001 — Deployment configuration
-// The application code is district-agnostic. Each deployment
-// selects a polity slug and can override display text with env vars.
-// No source-code fork is required for another district.
-// ==========================================================
+// Deployment configuration
 
 const env = import.meta.env;
 

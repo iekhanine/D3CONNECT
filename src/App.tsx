@@ -6,17 +6,19 @@ import Header from "./components/Header";
 import SectionViews from "./components/SectionViews";
 import Sidebar from "./components/Sidebar";
 import { polity } from "./config/polity";
-import { loadDashboardData, subscribe } from "./lib/dataService";
+import { loadNeighborhoods, subscribe } from "./lib/dataService";
 import {
   createCivicIssue,
-  createDemoIncomingProxyRequests,
   createProposal,
   loadGovernanceData,
+  toggleBillSupport,
+} from "./lib/governanceService";
+import {
+  createDemoIncomingProxyRequests,
   removeProxyAssignment,
   respondToProxyAssignment,
   saveProxyAssignment,
-  toggleBillSupport,
-} from "./lib/governanceService";
+} from "./lib/proxyService";
 import type {
   Bill,
   Citizen,
@@ -61,21 +63,13 @@ function urlForView(view: ViewKey) {
 }
 
 export default function App() {
-  // ========================================================
-  // APP 001 — Navigation / deployment state
-  // ========================================================
+  // Navigation / deployment state
   const [activeView, setActiveView] = useState<ViewKey>(() => viewFromLocation());
   const [selectedNeighborhood, setSelectedNeighborhood] = useState("All");
-
-  // ========================================================
-  // APP 002 — Neighborhood metadata
+  // Neighborhood metadata
   // Used for resident context and issue reporting.
-  // ========================================================
   const [neighborhoods, setNeighborhoods] = useState<Neighborhood[]>([]);
-
-  // ========================================================
-  // APP 003 — Governance state
-  // ========================================================
+  // Governance state
   const [topics, setTopics] = useState<Topic[]>([]);
   const [citizens, setCitizens] = useState<Citizen[]>([]);
   const [civicIssues, setCivicIssues] = useState<CivicIssue[]>([]);
@@ -88,17 +82,14 @@ export default function App() {
   const currentCitizenId =
     citizens.find((citizen) => citizen.display_name === "You (Demo Citizen)")?.id ??
     polity.demoCitizenId;
-
-  // ========================================================
-  // APP 004 — Newsletter state
-  // ========================================================
+  // Newsletter state
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
 
   useEffect(() => {
-    Promise.all([loadDashboardData(), loadGovernanceData()]).then(
-      ([community, governance]) => {
-        setNeighborhoods(community.neighborhoods);
+    Promise.all([loadNeighborhoods(), loadGovernanceData()]).then(
+      ([loadedNeighborhoods, governance]) => {
+        setNeighborhoods(loadedNeighborhoods);
 
         setTopics(governance.topics);
         setCitizens(governance.citizens);
@@ -131,10 +122,7 @@ export default function App() {
     () => citizens.find((citizen) => citizen.id === currentCitizenId),
     [citizens, currentCitizenId],
   );
-
-  // ========================================================
-  // APP 005 — Supabase state synchronization
-  // ========================================================
+  // Supabase state synchronization
   async function refreshGovernanceState() {
     const governance = await loadGovernanceData();
 
@@ -158,17 +146,12 @@ export default function App() {
     setActiveView(view);
     window.scrollTo({ top: 0, behavior: "smooth" });
 
-    // Supabase is authoritative for governance data. Refresh whenever
-    // the resident returns to a governance section so navigation cannot
-    // restore an older React snapshot.
+    // Refresh governance data when returning to a resident-facing governance view.
     if (["civic-issues", "proposals", "bills", "proxy", "delegation"].includes(view)) {
       void refreshGovernanceState();
     }
   }
-
-  // ========================================================
-  // APP 006 — Governance actions
-  // ========================================================
+  // Governance actions
   async function handleCreateIssue(input: {
     title: string;
     summary: string;
@@ -361,7 +344,6 @@ export default function App() {
             />
           ) : activeView === "home" ? (
             <GovernanceHome
-              topics={topics}
               civicIssues={civicIssues}
               proposals={proposals}
               bills={bills}
